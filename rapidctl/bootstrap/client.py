@@ -15,6 +15,7 @@ class CtlClient:
         self.container_repo: Optional[str] = None
         self.baseline_version: str  = "1.0.0"
         self.client_version: str = "0.0.1"
+        self.image_id: Optional[str] = None
 
     def _container_validator(self, container_image):
         """
