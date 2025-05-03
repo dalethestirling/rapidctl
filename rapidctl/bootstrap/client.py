@@ -16,6 +16,7 @@ class CtlClient:
         self.baseline_version: str  = "1.0.0"
         self.client_version: str = "0.0.1"
         self.image_id: Optional[str] = None
+        self.command_path = "/opt/rapidctl/cmd/"
 
     def _container_validator(self, container_image):
         """
