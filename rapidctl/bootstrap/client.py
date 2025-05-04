@@ -13,10 +13,20 @@ class CtlClient:
     """
     def __init__(self):
         self.container_repo: Optional[str] = None
-        self.baseline_version: str  = "1.0.0"
+        self.baseline_version: str = "1.0.0"
         self.client_version: str = "0.0.1"
         self.image_id: Optional[str] = None
-        self.command_path = "/opt/rapidctl/cmd/"
+        self.command_path: str = "/opt/rapidctl/cmd/"
+    
+    @property
+    def container_version(self):
+        """
+         Function to provide an view of the container image tag
+
+         Returns:
+            str: Aggregrated version of the container repo path and version
+        """
+        return self._container_validator("%s:%s" % (self.container_repo, self.baseline_version))
 
     def _container_validator(self, container_image):
         """
