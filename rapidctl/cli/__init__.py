@@ -30,6 +30,33 @@ class PodmanCLI:
         except Exception as e:
             raise PodmanApiError(f"Failed to list images: {str(e)}")
 
+    def pull_image(self, image_name: str) -> Dict[str, Any]:
+        """Pull an image from a registry."""
+        try:
+            # The stream=True parameter provides progress information
+            pull_logs = []
+            for line in self.client.images.pull(image_name, stream=True):
+                if 'status' in line:
+                    status = line['status']
+                    if 'progress' in line:
+                        progress = line['progress']
+                        print(f"{status}: {progress}", end='\r')
+                    else:
+                        print(f"{status}")
+                    pull_logs.append(line)
+        
+            # Get the pulled image
+            image = self.client.images.get(image_name)
+        
+            return {
+                "Id": image.id,
+                "RepoTags": image.tags,
+                "Size": image.attrs.get("Size"),
+                "PullLogs": pull_logs
+            }
+        except Exception as e:
+            raise PodmanAPIError(f"Failed to pull image: {str(e)}")
+
     def list_containers(self, all_containers: bool = False) -> List[Dict[str, Any]]:
         """List containers."""
         try:
