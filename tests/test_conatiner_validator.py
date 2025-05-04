@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from rapidctl.bootstrap.client import CtlClient
+from ../rapidctl.bootstrap.client import CtlClient
 
 client = CtlClient()
 
