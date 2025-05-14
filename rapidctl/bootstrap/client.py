@@ -47,10 +47,8 @@ class CtlClient:
     
         # Check if the image contains a URL/registry part
         if '/' in container_image:
-            print('has slash')
             # Parse as URL if it contains protocol
             if '://' in container_image:
-                #print('in ://')
                 try:
                     parsed = urlparse(container_image)
                     # Validate the hostname
@@ -66,10 +64,8 @@ class CtlClient:
                 except Exception:
                     return None
             else:
-                print('in / else')
                 # Handle registry/repo/image format (like docker.io/library/ubuntu)
                 parts = container_image.split('/')
-                print(parts)
                 safe_parts = []
             
                 for part in parts:
@@ -83,7 +79,6 @@ class CtlClient:
                     else:
                         # Repository and image name validation
                         safe_part = re.sub(r'[^a-zA-Z0-9._:@-]', '', part)
-                        print(safe_part)
                         if safe_part:
                             safe_parts.append(safe_part)
             
@@ -91,7 +86,6 @@ class CtlClient:
                     return '/'.join(safe_parts)
                 return None
         else:
-            print('no slash')
             # Simple image name (like "ubuntu" or "ubuntu:latest")
             image_parts = container_image.split(':')
         
