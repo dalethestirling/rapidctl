@@ -28,7 +28,7 @@ class PodmanCLI:
             images = self.client.images.list()
             return images
         except Exception as e:
-            raise PodmanApiError(f"Failed to list images: {str(e)}")
+            raise PodmanAPIError(f"Failed to list images: {str(e)}")
 
     def pull_image(self, image_name: str) -> Dict[str, Any]:
         """Pull an image from a registry."""

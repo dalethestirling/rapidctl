@@ -5,11 +5,11 @@ import os.path
 
 class CtlClient:
     """
-    Class that defines and alidates the required data that requires definition
+    Class that defines and validates the required data that requires definition
     on the CTL client side of the stack.
 
-    Once actions using this class a re complete the CTL client should be ready
-    to connect to the container layer and start command provisioning. 
+    Once actions using this class are complete the CTL client should be ready
+    to connect to the container layer and start command provisioning.
     """
     def __init__(self):
         self.container_repo: Optional[str] = None
