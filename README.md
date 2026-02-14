@@ -64,8 +64,8 @@ cd rapidctl
 # Install dependencies
 pip install podman
 
-# Set the Podman socket path (if not default)
-export PODMAN_SOCKET="unix:///run/user/$(id -u)/podman/podman.sock"
+# Optional: Set the Podman socket path manually (auto-detected by default)
+# export PODMAN_SOCKET="unix:///run/user/$(id -u)/podman/podman.sock"
 ```
 
 ### Creating Your Custom CLI Tool
@@ -145,7 +145,17 @@ if __name__ == '__main__':
 
 ### Environment Variables
 
-- `PODMAN_SOCKET`: Path to Podman socket (default: `unix:///var/run/docker.sock`)
+- **`PODMAN_SOCKET`**: Path to Podman socket (optional)
+  - If not set, rapidctl will auto-detect the socket location using platform-specific connectors
+  - On macOS, auto-detection checks:
+    - `~/.local/share/containers/podman/machine/podman.sock`
+    - `/var/run/docker.sock`
+    - Machine-specific socket locations
+  - Override auto-detection by setting this variable:
+    ```bash
+    export PODMAN_SOCKET="unix:///path/to/your/podman.sock"
+    ```
+  - Useful for custom Podman installations or when running multiple Podman instances
 
 ## 🔒 Security
 
@@ -221,7 +231,9 @@ rapidctl/
 - [ ] Create packaging configuration (pyproject.toml)
 - [ ] Expand test coverage
 - [ ] Add CI/CD pipeline
-- [ ] Platform-specific socket detection
+- [x] Platform-specific socket detection (macOS complete)
+- [ ] Add Linux connector
+- [ ] Add Windows connector
 
 ## 🤝 Contributing
 
