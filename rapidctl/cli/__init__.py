@@ -15,12 +15,28 @@ class PodmanCLI:
         self.client = None
 
     def _connect_to_podman(self) -> None:
-        """Connect to the podman socket."""
-        socket_path = os.environ.get("PODMAN_SOCKET", "unix:///var/run/docker.sock")
+        """Connect to the podman socket using platform-specific connector."""
+        # Try to get socket from environment first
+        socket_path = os.environ.get("PODMAN_SOCKET")
+        
+        # If not set, use connector to auto-detect
+        if not socket_path:
+            try:
+                from rapidctl.bootstrap.connectors import detect_socket
+                socket_path = detect_socket()
+                if not socket_path:
+                    raise PodmanAPIError(
+                        "Could not detect Podman socket. "
+                        "Please ensure Podman is installed and running, "
+                        "or set the PODMAN_SOCKET environment variable."
+                    )
+            except ImportError as e:
+                raise PodmanAPIError(f"Failed to import connector: {str(e)}")
+        
         try:
             self.client = podman.client.PodmanClient(base_url=socket_path)
         except Exception as e:
-            raise PodmanAPIError(f"Failed to connect to Podman API: {str(e)}")
+            raise PodmanAPIError(f"Failed to connect to Podman API at {socket_path}: {str(e)}")
 
     def list_images(self):
         """List container images"""
