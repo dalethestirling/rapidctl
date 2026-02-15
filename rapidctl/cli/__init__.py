@@ -6,6 +6,7 @@ import json
 import os
 from typing import List, Optional, Dict, Any
 import podman
+import re
 
 
 class PodmanCLI:
