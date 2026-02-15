@@ -103,3 +103,27 @@ def authenticate_to_registry(podman_session, image_name: str):
     except Exception as e:
         print(f"✗ Login failed: {e}\n")
         return False
+
+
+def run_container_command(podman_session, image_name: str, command_path: str, args: List[str]):
+    """
+    Action to execute a command within a container.
+    Constructs the full path to the executable and runs it.
+    """
+    import os
+    
+    if not args:
+        print("No command provided to execute.")
+        return
+
+    # Subcommand is the first argument
+    sub_command = args[0]
+    
+    # Construct full path to the command inside the container
+    full_command_path = os.path.join(command_path, sub_command)
+    
+    # Combine with remaining arguments
+    full_command = [full_command_path] + args[1:]
+    
+    # Run the container
+    podman_session.run_container(image_name, full_command)

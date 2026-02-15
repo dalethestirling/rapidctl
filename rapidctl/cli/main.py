@@ -23,6 +23,7 @@ def main(client_obj):
             print(f"Container {client_obj.container_version} not found locally. Pulling...")
             new_image = rapidctl.cli.actions.pull_container(cli, client_obj.container_version)
             print("✓ Pull successful")
+            container_image = new_image  # Update container_image after pull
         except PodmanAuthError:
             # Trigger authentication action
             if rapidctl.cli.actions.authenticate_to_registry(cli, client_obj.container_version):
@@ -30,9 +31,25 @@ def main(client_obj):
                 print(f"Retrying pull for {client_obj.container_version}...")
                 new_image = rapidctl.cli.actions.pull_container(cli, client_obj.container_version)
                 print("✓ Pull successful")
+                container_image = new_image
             else:
                 print("✗ Authentication failed. Cannot proceed.")
                 sys.exit(1)
         except Exception as e:
             print(f"✗ Failed to obtain container: {e}")
             sys.exit(1)
+
+    # Now that we have the container, run the command if provided
+    if sub_command:
+        try:
+            rapidctl.cli.actions.run_container_command(
+                cli, 
+                client_obj.container_version, 
+                client_obj.command_path, 
+                sub_command
+            )
+        except Exception as e:
+            print(f"Error executing command: {e}")
+            sys.exit(1)
+    else:
+        print(f"Ready: {client_obj.container_version} (No subcommand provided)")
