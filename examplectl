@@ -13,7 +13,25 @@ client.container_repo = "ghcr.io/dalethestirling/rapidctl-container"
 client.baseline_version = "1746190043"
 client.client_version = "0.0.1"
 
+def check_for_updates(client_obj):
+    """Demonstrate version management: check for newer local versions."""
+    from rapidctl.cli import PodmanCLI
+    import rapidctl.cli.actions as actions
+    
+    cli = PodmanCLI()
+    try:
+        cli._connect_to_podman()
+        newer = actions.find_newer_version(cli, client_obj.container_repo, client_obj.baseline_version)
+        if newer:
+            print(f"--- Newer container version found: {newer} (Current: {client_obj.baseline_version}) ---")
+            # In a real app, you might auto-update or prompt
+            # client_obj.set_version(newer)
+    except Exception as e:
+        # Silently fail update check if podman not ready
+        pass
+
 # Lets be a cli tool. 
 if __name__ == '__main__':
+    check_for_updates(client)
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
     sys.exit(main(client))

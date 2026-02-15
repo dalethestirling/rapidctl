@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any
 import re
 from urllib.parse import urlparse
 import os.path
+import rapidctl.cli.tasks
 
 class CtlClient:
     """
@@ -17,6 +18,16 @@ class CtlClient:
         self.client_version: str = "0.0.1"
         self.image_id: Optional[str] = None
         self.command_path: str = "/opt/rapidctl/cmd/"
+        
+        # Load persisted version state if available
+        self._load_persisted_version()
+    
+    def _load_persisted_version(self) -> None:
+        """Attempt to load a pinned version from disk."""
+        if self.container_repo:
+            pinned = rapidctl.cli.tasks.read_version_state(self.container_repo)
+            if pinned:
+                self.baseline_version = pinned
     
     @property
     def container_version(self):
@@ -27,6 +38,22 @@ class CtlClient:
             str: Aggregrated version of the container repo path and version
         """
         return self._container_validator("%s:%s" % (self.container_repo, self.baseline_version))
+
+    def set_version(self, version: str) -> None:
+        """Update the baseline version with validation."""
+        # Validate that the version string is safe
+        safe_version = re.sub(r'[^a-zA-Z0-9._-]', '', version)
+        if safe_version:
+            self.baseline_version = safe_version
+
+    def get_version(self) -> str:
+        """Return the current baseline version."""
+        return self.baseline_version
+
+    def persist_version(self) -> None:
+        """Persist the current baseline version to disk."""
+        if self.container_repo:
+            rapidctl.cli.tasks.write_version_state(self.container_repo, self.baseline_version)
 
     def _container_validator(self, container_image):
         """
