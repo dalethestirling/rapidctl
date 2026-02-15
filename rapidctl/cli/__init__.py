@@ -13,6 +13,7 @@ class PodmanCLI:
 
     def __init__(self):
         self.client = None
+        self.auth_configs = {}
 
     def _connect_to_podman(self) -> None:
         """Connect to the podman socket using platform-specific connector."""
@@ -49,17 +50,43 @@ class PodmanCLI:
     def pull_image(self, image_name: str) -> Dict[str, Any]:
         """Pull an image from a registry."""
         try:
+            # Extract registry for auth lookup
+            registry = "docker.io"
+            if "/" in image_name:
+                parts = image_name.split("/")
+                # If first part looks like a registry (has . or :)
+                if "." in parts[0] or ":" in parts[0]:
+                    registry = parts[0]
+            
+            # Use cached credentials if available
+            auth_config = self.auth_configs.get(registry)
+            if auth_config:
+                print(f"Using cached credentials for {registry} (User: {auth_config.get('username')})")
+            
             # The stream=True parameter provides progress information
             pull_logs = []
-            for line in self.client.images.pull(image_name, stream=True):
-                if 'status' in line:
+            for line in self.client.images.pull(image_name, stream=True, auth_config=auth_config):
+                # Handle both bytes and str (some environments yield bytes)
+                if isinstance(line, bytes):
+                    try:
+                        line = json.loads(line.decode('utf-8'))
+                    except Exception:
+                        # If not JSON, just decode it
+                        line = {"status": line.decode('utf-8')}
+                elif isinstance(line, str):
+                    try:
+                        line = json.loads(line)
+                    except Exception:
+                        line = {"status": line}
+
+                if isinstance(line, dict) and 'status' in line:
                     status = line['status']
                     if 'progress' in line:
                         progress = line['progress']
                         print(f"{status}: {progress}", end='\r')
                     else:
                         print(f"{status}")
-                    pull_logs.append(line)
+                pull_logs.append(line)
         
             # Get the pulled image
             image = self.client.images.get(image_name)
@@ -79,7 +106,14 @@ class PodmanCLI:
     def login(self, username, password, registry):
         """Authenticate with a registry."""
         try:
-            return self.client.login(username=username, password=password, registry=registry)
+            result = self.client.login(username=username, password=password, registry=registry)
+            # Cache credentials for pull operations
+            self.auth_configs[registry] = {
+                "username": username,
+                "password": password,
+                "serveraddress": registry
+            }
+            return result
         except Exception as e:
             raise PodmanAPIError(f"Failed to login to {registry}: {str(e)}")
 
