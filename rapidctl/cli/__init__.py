@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from rapidctl.errors import PodmanAPIError
+from rapidctl.errors import PodmanAPIError, PodmanAuthError
 import sys
 import json
 import os
@@ -71,7 +71,17 @@ class PodmanCLI:
                 "PullLogs": pull_logs
             }
         except Exception as e:
+            error_msg = str(e).lower()
+            if any(key in error_msg for key in ["unauthorized", "auth token", "401", "authentication required"]):
+                raise PodmanAuthError(f"Authentication required for {image_name}: {str(e)}")
             raise PodmanAPIError(f"Failed to pull image: {str(e)}")
+
+    def login(self, username, password, registry):
+        """Authenticate with a registry."""
+        try:
+            return self.client.login(username=username, password=password, registry=registry)
+        except Exception as e:
+            raise PodmanAPIError(f"Failed to login to {registry}: {str(e)}")
 
     def list_containers(self, all_containers: bool = False) -> List[Dict[str, Any]]:
         """List containers."""

@@ -18,6 +18,7 @@ class CtlClient:
         self.client_version: str = "0.0.1"
         self.image_id: Optional[str] = None
         self.command_path: str = "/opt/rapidctl/cmd/"
+        self.cli: Optional[Any] = None
         
         # Load persisted version state if available
         self._load_persisted_version()
@@ -54,6 +55,18 @@ class CtlClient:
         """Persist the current baseline version to disk."""
         if self.container_repo:
             rapidctl.cli.tasks.write_version_state(self.container_repo, self.baseline_version)
+
+    def connect(self):
+        """
+        Initialize the Podman CLI connection and store it in self.cli.
+        
+        Returns:
+            PodmanCLI: The connected CLI instance
+        """
+        from rapidctl.cli import PodmanCLI
+        self.cli = PodmanCLI()
+        self.cli._connect_to_podman()
+        return self.cli
 
     def _container_validator(self, container_image):
         """

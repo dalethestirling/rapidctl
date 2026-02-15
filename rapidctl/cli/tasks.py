@@ -82,3 +82,8 @@ def write_version_state(repo: str, version: str) -> None:
             json.dump(state, f, indent=4)
     except OSError:
         pass
+
+
+def registry_login(podman_session, registry, username, password):
+    """Task to authenticate with a registry."""
+    return podman_session.login(username=username, password=password, registry=registry)

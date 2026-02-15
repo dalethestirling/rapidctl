@@ -15,13 +15,14 @@ client.client_version = "0.0.1"
 
 def check_for_updates(client_obj):
     """Demonstrate version management: check for newer local versions."""
-    from rapidctl.cli import PodmanCLI
     import rapidctl.cli.actions as actions
     
-    cli = PodmanCLI()
+    # Ensure connected
+    if not client_obj.cli:
+        client_obj.connect()
+        
     try:
-        cli._connect_to_podman()
-        newer = actions.find_newer_version(cli, client_obj.container_repo, client_obj.baseline_version)
+        newer = actions.find_newer_version(client_obj.cli, client_obj.container_repo, client_obj.baseline_version)
         if newer:
             print(f"--- Newer container version found: {newer} (Current: {client_obj.baseline_version}) ---")
             # In a real app, you might auto-update or prompt
@@ -32,6 +33,12 @@ def check_for_updates(client_obj):
 
 # Lets be a cli tool. 
 if __name__ == '__main__':
+    try:
+        client.connect()
+    except Exception as e:
+        print(f"Failed to connect to Podman: {e}")
+        sys.exit(1)
+
     check_for_updates(client)
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
     sys.exit(main(client))

@@ -74,3 +74,32 @@ def apply_latest_available(podman_session, repo: str, current_version: str) -> s
         return newer
         
     return current_version
+    return current_version
+
+
+def authenticate_to_registry(podman_session, image_name: str):
+    """
+    Action to prompt user for credentials and log in to the registry.
+    Extracts registry from image name if possible.
+    """
+    import getpass
+    from urllib.parse import urlparse
+    
+    # Simple extraction of registry from image name (e.g., ghcr.io/repo/img)
+    registry = "docker.io" # Default
+    if "/" in image_name:
+        parts = image_name.split("/")
+        if "." in parts[0] or ":" in parts[0]:
+            registry = parts[0]
+            
+    print(f"\n--- Registry Authentication Required for {registry} ---")
+    username = input(f"Username: ")
+    password = getpass.getpass(f"Password: ")
+    
+    try:
+        rapidctl.cli.tasks.registry_login(podman_session, registry, username, password)
+        print("✓ Login successful\n")
+        return True
+    except Exception as e:
+        print(f"✗ Login failed: {e}\n")
+        return False
