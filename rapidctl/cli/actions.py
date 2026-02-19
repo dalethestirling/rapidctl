@@ -125,5 +125,27 @@ def run_container_command(podman_session, image_name: str, command_path: str, ar
     # Combine with remaining arguments
     full_command = [full_command_path] + args[1:]
     
-    # Run the container
-    podman_session.run_container(image_name, full_command)
+    # Run the container and stream output locally
+    output_stream = podman_session.run_container(image_name, full_command, stream=True)
+    for line in output_stream:
+        if isinstance(line, bytes):
+            print(line.decode('utf-8'), end='')
+        else:
+            print(line, end='')
+
+
+def get_container_subcommands(podman_session, image_name: str, command_path: str) -> List[str]:
+    """
+    Action to discover available subcommands by listing files in the command_path.
+    """
+    try:
+        # Use the task to capture 'ls -1' output
+        commands = rapidctl.cli.tasks.run_command_capture(
+            podman_session, 
+            image_name, 
+            ["ls", "-1", command_path]
+        )
+        return sorted(commands)
+    except Exception as e:
+        print(f"Warning: Could not discover subcommands in container: {e}")
+        return []

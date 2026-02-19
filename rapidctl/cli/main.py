@@ -41,6 +41,30 @@ def main(client_obj):
 
     # Now that we have the container, run the command if provided
     if sub_command:
+        # 1. Discover available subcommands
+        available_cmds = rapidctl.cli.actions.get_container_subcommands(
+            cli, 
+            client_obj.container_version, 
+            client_obj.command_path
+        )
+        
+        # 2. Validate requested subcommand
+        requested_cmd = sub_command[0]
+        if available_cmds and requested_cmd not in available_cmds:
+            import difflib
+            print(f"✗ Error: '{requested_cmd}' is not a valid subcommand.")
+            
+            # Find closest matches
+            suggestions = difflib.get_close_matches(requested_cmd, available_cmds, n=3, cutoff=0.5)
+            if suggestions:
+                print(f"Did you mean: {', '.join(suggestions)}?")
+            
+            print("\nAvailable commands:")
+            for cmd in available_cmds:
+                print(f"  - {cmd}")
+            sys.exit(1)
+            
+        # 3. Execute
         try:
             rapidctl.cli.actions.run_container_command(
                 cli, 
@@ -52,4 +76,15 @@ def main(client_obj):
             print(f"Error executing command: {e}")
             sys.exit(1)
     else:
-        print(f"Ready: {client_obj.container_version} (No subcommand provided)")
+        # If no subcommand, maybe show available ones anyway
+        available_cmds = rapidctl.cli.actions.get_container_subcommands(
+            cli, 
+            client_obj.container_version, 
+            client_obj.command_path
+        )
+        if available_cmds:
+            print(f"Available commands for {client_obj.container_version}:")
+            for cmd in available_cmds:
+                print(f"  - {cmd}")
+        else:
+            print(f"Ready: {client_obj.container_version} (No subcommand provided)")

@@ -87,3 +87,14 @@ def write_version_state(repo: str, version: str) -> None:
 def registry_login(podman_session, registry, username, password):
     """Task to authenticate with a registry."""
     return podman_session.login(username=username, password=password, registry=registry)
+
+
+def run_command_capture(podman_session, image_name: str, command: List[str]) -> List[str]:
+    """Task to run a command and capture its output."""
+    output = podman_session.run_container(image_name, command, stream=False)
+    
+    if isinstance(output, bytes):
+        output = output.decode('utf-8')
+    
+    # Split into lines and strip whitespace
+    return [line.strip() for line in output.split('\n') if line.strip()]

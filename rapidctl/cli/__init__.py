@@ -118,29 +118,21 @@ class PodmanCLI:
         except Exception as e:
             raise PodmanAPIError(f"Failed to login to {registry}: {str(e)}")
 
-    def run_container(self, image_name: str, command: List[str]) -> None:
-        """Run a command in a new container and stream output."""
+    def run_container(self, image_name: str, command: List[str], stream: bool = True) -> Any:
+        """Run a command in a new container."""
         try:
-            # Use containers.run with stream=True to get output
-            # remove=True ensures the container is cleaned up after execution
-            container_output = self.client.containers.run(
+            return self.client.containers.run(
                 image_name, 
                 command=command, 
                 remove=True, 
-                stream=True
+                stream=stream
             )
-            
-            for line in container_output:
-                if isinstance(line, bytes):
-                    print(line.decode('utf-8'), end='')
-                else:
-                    print(line, end='')
-                    
         except Exception as e:
             error_msg = str(e)
             # Detect OCI command not found errors
             if "not found in $PATH" in error_msg or "OCI runtime attempted to invoke a command that was not found" in error_msg:
                 # Try to extract the command name for a better message
+                import re
                 cmd_search = re.search(r'executable file `([^`]+)`', error_msg)
                 missing_cmd = cmd_search.group(1) if cmd_search else command[0]
                 raise PodmanAPIError(
