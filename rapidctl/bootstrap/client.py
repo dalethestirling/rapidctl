@@ -23,6 +23,19 @@ class CtlClient:
         # Load persisted version state if available
         self._load_persisted_version()
     
+    def check_for_updates(self) -> Optional[str]:
+        """Check if a newer container version exists locally."""
+        import rapidctl.cli.actions as actions
+        
+        if not self.cli:
+            self.connect()
+            
+        try:
+            newer = actions.find_newer_version(self.cli, self.container_repo, self.baseline_version)
+            return newer
+        except Exception:
+            return None
+
     def _load_persisted_version(self) -> None:
         """Attempt to load a pinned version from disk."""
         if self.container_repo:

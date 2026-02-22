@@ -13,6 +13,23 @@ def main(client_obj):
 
     sub_command = sys.argv[1:]
 
+    # check for updates
+    newer = client_obj.check_for_updates()
+    if newer:
+        print(f"--- Newer container version found: {newer} (Current: {client_obj.baseline_version}) ---")
+        print(f"--- You can pin this version to your environment by running apply-update ---")
+
+    # Handle reserved local commands
+    if sub_command and sub_command[0] == "apply-update":
+        from rapidctl.cli.actions import apply_latest_available
+        print(f"Applying update to latest version...")
+        new_v = apply_latest_available(cli, client_obj.container_repo, client_obj.baseline_version)
+        if new_v != client_obj.baseline_version:
+            print(f"✓ Version {new_v} is now pinned as your default.")
+        else:
+            print("No newer local version found to apply.")
+        sys.exit(0)
+
     def get_container():
         return rapidctl.cli.actions.find_container(cli, client_obj.container_version)
 

@@ -8,7 +8,6 @@ def find_container(podman_session, container):
     return image 
 
 def pull_container(podman_session, container):
-    print(container)
     image = podman_session.pull_image(container)
 
     return image
@@ -98,10 +97,10 @@ def authenticate_to_registry(podman_session, image_name: str):
     
     try:
         rapidctl.cli.tasks.registry_login(podman_session, registry, username, password)
-        print("✓ Login successful\n")
+        print("✓ Login successful")
         return True
     except Exception as e:
-        print(f"✗ Login failed: {e}\n")
+        print(f"✗ Login failed: {e}")
         return False
 
 
