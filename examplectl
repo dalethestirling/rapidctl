@@ -10,7 +10,7 @@ client = client.CtlClient()
 
 # Define details about the client here.
 client.container_repo = "ghcr.io/dalethestirling/rapidctl-container"
-client.baseline_version = "1746190043"
+client.baseline_version = "1771729391"
 client.client_version = "0.0.1"
 
 def check_for_updates(client_obj):
