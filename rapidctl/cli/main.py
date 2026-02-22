@@ -77,6 +77,15 @@ def main(client_obj):
                     print(f"  {cmd}")
             sys.exit(0)
             
+        if len(sub_command) == 2 and sub_command[1] in ('--help', '-h') and requested_cmd in available_cmds:
+            summary = available_cmds.get(requested_cmd)
+            print(f"Command: {requested_cmd}")
+            if summary:
+                print(f"  {summary}")
+            else:
+                print("  No description available.")
+            sys.exit(0)
+            
         if available_cmds and requested_cmd not in available_cmds:
             import difflib
             print(f"✗ Error: '{requested_cmd}' is not a valid subcommand.")
