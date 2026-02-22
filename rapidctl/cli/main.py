@@ -67,18 +67,31 @@ def main(client_obj):
         
         # 2. Validate requested subcommand
         requested_cmd = sub_command[0]
+        
+        if requested_cmd in ('--help', '-h'):
+            print(f"Available commands for {client_obj.container_version}:")
+            for cmd, summary in available_cmds.items():
+                if summary:
+                    print(f"  {cmd:<20} - {summary}")
+                else:
+                    print(f"  {cmd}")
+            sys.exit(0)
+            
         if available_cmds and requested_cmd not in available_cmds:
             import difflib
             print(f"✗ Error: '{requested_cmd}' is not a valid subcommand.")
             
             # Find closest matches
-            suggestions = difflib.get_close_matches(requested_cmd, available_cmds, n=3, cutoff=0.5)
+            suggestions = difflib.get_close_matches(requested_cmd, available_cmds.keys(), n=3, cutoff=0.5)
             if suggestions:
                 print(f"Did you mean: {', '.join(suggestions)}?")
             
             print("\nAvailable commands:")
-            for cmd in available_cmds:
-                print(f"  - {cmd}")
+            for cmd, summary in available_cmds.items():
+                if summary:
+                    print(f"  {cmd:<20} - {summary}")
+                else:
+                    print(f"  {cmd}")
             sys.exit(1)
             
         # 3. Execute
@@ -101,7 +114,10 @@ def main(client_obj):
         )
         if available_cmds:
             print(f"Available commands for {client_obj.container_version}:")
-            for cmd in available_cmds:
-                print(f"  - {cmd}")
+            for cmd, summary in available_cmds.items():
+                if summary:
+                    print(f"  {cmd:<20} - {summary}")
+                else:
+                    print(f"  {cmd}")
         else:
             print(f"Ready: {client_obj.container_version} (No subcommand provided)")

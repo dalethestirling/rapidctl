@@ -34,6 +34,9 @@ class OSXConnector:
         Returns:
             str: URI to the Podman socket (e.g., 'unix:///path/to/socket') or None if not found
         """
+        # Fast path: return existing valid socket
+        if self.socket_path and self._validate_socket(self.socket_path):
+            return self.socket_path
         # Check environment variable first
         env_socket = os.environ.get("PODMAN_SOCKET")
         if env_socket:
@@ -110,6 +113,10 @@ class OSXConnector:
         Returns:
             bool: True if Podman is running, False otherwise
         """
+        # Fast path: If socket is valid and accessible, Podman is effectively running
+        if self.socket_path and self._validate_socket(self.socket_path):
+            return True
+            
         try:
             # Check if podman command is available
             result = subprocess.run(

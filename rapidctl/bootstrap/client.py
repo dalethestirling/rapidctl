@@ -3,6 +3,9 @@ import re
 from urllib.parse import urlparse
 import os.path
 import rapidctl.cli.tasks
+from pathlib import Path
+import json
+import time
 
 class CtlClient:
     """
@@ -36,10 +39,68 @@ class CtlClient:
         except Exception:
             return None
 
+    def _get_state_file_path(self) -> Path:
+        """Helper to get the path to the rapidctl state file."""
+        return Path.home() / ".rapidctl" / "state.json"
+
+    def get_state(self, key: str) -> Any:
+        """Get a value from the state file."""
+        state_file = self._get_state_file_path()
+        if not state_file.exists():
+            return None
+        
+        try:
+            with open(state_file, 'r') as f:
+                state = json.load(f)
+                return state.get(key)
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    def set_state(self, key: str, value: Any) -> None:
+        """Set a value in the state file."""
+        state_file = self._get_state_file_path()
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+        state = {}
+        
+        if state_file.exists():
+            try:
+                with open(state_file, 'r') as f:
+                    state = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                pass
+        
+        state[key] = value
+        
+        try:
+            with open(state_file, 'w') as f:
+                json.dump(state, f, indent=4)
+        except OSError:
+            pass
+
+    def get_cache(self, key: str) -> Any:
+        """Get a cached value if it has not expired."""
+        cache_data = self.get_state(f"cache_{key}")
+        if cache_data and isinstance(cache_data, dict):
+            timestamp = cache_data.get("timestamp", 0)
+            ttl = cache_data.get("ttl", 300) # Default 5 mins
+            
+            if time.time() - timestamp < ttl:
+                return cache_data.get("data")
+        return None
+
+    def set_cache(self, key: str, data: Any, ttl: int = 300) -> None:
+        """Set a cached value with a time-to-live seconds."""
+        cache_data = {
+            "timestamp": time.time(),
+            "ttl": ttl,
+            "data": data
+        }
+        self.set_state(f"cache_{key}", cache_data)
+
     def _load_persisted_version(self) -> None:
         """Attempt to load a pinned version from disk."""
         if self.container_repo:
-            pinned = rapidctl.cli.tasks.read_version_state(self.container_repo)
+            pinned = self.get_state(f"version_{self.container_repo}")
             if pinned:
                 self.baseline_version = pinned
     
@@ -67,7 +128,7 @@ class CtlClient:
     def persist_version(self) -> None:
         """Persist the current baseline version to disk."""
         if self.container_repo:
-            rapidctl.cli.tasks.write_version_state(self.container_repo, self.baseline_version)
+            self.set_state(f"version_{self.container_repo}", self.baseline_version)
 
     def connect(self):
         """
