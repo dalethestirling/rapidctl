@@ -18,8 +18,12 @@ from rapidctl.cli import PodmanCLI
 def test_auto_detection():
     """Test that PodmanCLI auto-detects socket without environment variable."""
     
-    print("Testing auto-detection in _connect_to_podman")
+    print(f"Testing auto-detection in _connect_to_podman on {sys.platform}")
     print("=" * 60)
+    
+    # Platform-specific gating or notes
+    if sys.platform not in ("darwin", "linux"):
+        pytest.skip(f"Auto-detection tests not yet implemented for {sys.platform}")
     
     # Ensure PODMAN_SOCKET is not set
     assert "PODMAN_SOCKET" not in os.environ, "PODMAN_SOCKET should not be set for this test"

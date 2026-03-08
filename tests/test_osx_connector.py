@@ -12,6 +12,7 @@ from rapidctl.bootstrap.connectors.osx import OSXConnector
 
 import pytest
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="OSX connector tests only run on macOS")
 @pytest.mark.requires_podman
 class TestOSXConnector(unittest.TestCase):
     def setUp(self):
