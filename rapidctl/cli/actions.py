@@ -8,7 +8,6 @@ def find_container(podman_session, container):
     return image 
 
 def pull_container(podman_session, container):
-    print(container)
     image = podman_session.pull_image(container)
 
     return image
@@ -98,10 +97,10 @@ def authenticate_to_registry(podman_session, image_name: str):
     
     try:
         rapidctl.cli.tasks.registry_login(podman_session, registry, username, password)
-        print("✓ Login successful\n")
+        print("✓ Login successful")
         return True
     except Exception as e:
-        print(f"✗ Login failed: {e}\n")
+        print(f"✗ Login failed: {e}")
         return False
 
 
@@ -134,18 +133,40 @@ def run_container_command(podman_session, image_name: str, command_path: str, ar
             print(line, end='')
 
 
-def get_container_subcommands(podman_session, image_name: str, command_path: str) -> List[str]:
+def get_container_subcommands(podman_session, image_name: str, command_path: str) -> dict:
     """
-    Action to discover available subcommands by listing files in the command_path.
+    Action to discover available subcommands and their descriptions.
+    Tries to read commands.json from the parent directory of command_path,
+    falling back to listing files.
     """
+    import os
+    import json
+    
+    base_path = os.path.dirname(command_path.rstrip('/'))
+    json_path = os.path.join(base_path, "commands.json")
+    
     try:
-        # Use the task to capture 'ls -1' output
+        output = rapidctl.cli.tasks.run_command_capture(
+            podman_session,
+            image_name,
+            ["cat", json_path]
+        )
+        if output:
+            metadata = json.loads("\n".join(output))
+            result = {}
+            for cmd, info in metadata.items():
+                result[cmd] = info.get("summary", "")
+            return result
+    except Exception:
+        pass # Fallback to ls -1
+        
+    try:
         commands = rapidctl.cli.tasks.run_command_capture(
             podman_session, 
             image_name, 
             ["ls", "-1", command_path]
         )
-        return sorted(commands)
+        return {cmd: "" for cmd in sorted(commands) if cmd}
     except Exception as e:
         print(f"Warning: Could not discover subcommands in container: {e}")
-        return []
+        return {}

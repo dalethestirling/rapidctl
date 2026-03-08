@@ -13,6 +13,29 @@ def main(client_obj):
 
     sub_command = sys.argv[1:]
 
+    # check for updates
+    newer = client_obj.check_for_updates()
+    if newer:
+        print(f"--- Newer container version found: {newer} (Current: {client_obj.baseline_version}) ---")
+        print(f"--- You can pin this version to your environment by running apply-update ---")
+
+    # Handle reserved local commands
+    if sub_command and sub_command[0] == "apply-update":
+        from rapidctl.cli.actions import apply_latest_available
+        print(f"Applying update to latest version...")
+        new_v = apply_latest_available(cli, client_obj.container_repo, client_obj.baseline_version)
+        if new_v != client_obj.baseline_version:
+            print(f"✓ Version {new_v} is now pinned as your default.")
+        else:
+            print("No newer local version found to apply.")
+        sys.exit(0)
+
+    # Handle MCP mode
+    if sub_command and sub_command[0] == "mcp":
+        from rapidctl.cli.mcp import run_mcp_server
+        run_mcp_server(client_obj)
+        sys.exit(0)
+
     def get_container():
         return rapidctl.cli.actions.find_container(cli, client_obj.container_version)
 
@@ -50,18 +73,40 @@ def main(client_obj):
         
         # 2. Validate requested subcommand
         requested_cmd = sub_command[0]
+        
+        if requested_cmd in ('--help', '-h'):
+            print(f"Available commands for {client_obj.container_version}:")
+            for cmd, summary in available_cmds.items():
+                if summary:
+                    print(f"  {cmd:<20} - {summary}")
+                else:
+                    print(f"  {cmd}")
+            sys.exit(0)
+            
+        if len(sub_command) == 2 and sub_command[1] in ('--help', '-h') and requested_cmd in available_cmds:
+            summary = available_cmds.get(requested_cmd)
+            print(f"Command: {requested_cmd}")
+            if summary:
+                print(f"  {summary}")
+            else:
+                print("  No description available.")
+            sys.exit(0)
+            
         if available_cmds and requested_cmd not in available_cmds:
             import difflib
             print(f"✗ Error: '{requested_cmd}' is not a valid subcommand.")
             
             # Find closest matches
-            suggestions = difflib.get_close_matches(requested_cmd, available_cmds, n=3, cutoff=0.5)
+            suggestions = difflib.get_close_matches(requested_cmd, available_cmds.keys(), n=3, cutoff=0.5)
             if suggestions:
                 print(f"Did you mean: {', '.join(suggestions)}?")
             
             print("\nAvailable commands:")
-            for cmd in available_cmds:
-                print(f"  - {cmd}")
+            for cmd, summary in available_cmds.items():
+                if summary:
+                    print(f"  {cmd:<20} - {summary}")
+                else:
+                    print(f"  {cmd}")
             sys.exit(1)
             
         # 3. Execute
@@ -84,7 +129,10 @@ def main(client_obj):
         )
         if available_cmds:
             print(f"Available commands for {client_obj.container_version}:")
-            for cmd in available_cmds:
-                print(f"  - {cmd}")
+            for cmd, summary in available_cmds.items():
+                if summary:
+                    print(f"  {cmd:<20} - {summary}")
+                else:
+                    print(f"  {cmd}")
         else:
             print(f"Ready: {client_obj.container_version} (No subcommand provided)")

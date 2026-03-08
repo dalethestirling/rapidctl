@@ -46,42 +46,19 @@ def get_local_image_tags(podman_session, repo: str) -> List[str]:
 
 def _get_state_file_path() -> Path:
     """Helper to get the path to the rapidctl state file."""
-    return Path.home() / ".rapidctl.vstate"
+    return Path.home() / ".rapidctl" / "state.json"
 
 
 def read_version_state(repo: str) -> Optional[str]:
     """Task to read the persisted version tag for a repo."""
-    state_file = _get_state_file_path()
-    if not state_file.exists():
-        return None
-    
-    try:
-        with open(state_file, 'r') as f:
-            state = json.load(f)
-            return state.get(repo)
-    except (json.JSONDecodeError, OSError):
-        return None
+    from rapidctl.bootstrap.client import CtlClient
+    return CtlClient().get_state(f"version_{repo}")
 
 
 def write_version_state(repo: str, version: str) -> None:
     """Task to write the preferred version tag for a repo."""
-    state_file = _get_state_file_path()
-    state = {}
-    
-    if state_file.exists():
-        try:
-            with open(state_file, 'r') as f:
-                state = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
-    
-    state[repo] = version
-    
-    try:
-        with open(state_file, 'w') as f:
-            json.dump(state, f, indent=4)
-    except OSError:
-        pass
+    from rapidctl.bootstrap.client import CtlClient
+    CtlClient().set_state(f"version_{repo}", version)
 
 
 def registry_login(podman_session, registry, username, password):

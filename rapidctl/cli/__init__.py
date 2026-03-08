@@ -40,10 +40,35 @@ class PodmanCLI:
         except Exception as e:
             raise PodmanAPIError(f"Failed to connect to Podman API at {socket_path}: {str(e)}")
 
-    def list_images(self):
+    def list_images(self, cache: bool = True):
         """List container images"""
         try:
+            if cache:
+                from rapidctl.bootstrap.client import CtlClient
+                cm = CtlClient()
+                cached_data = cm.get_cache("podman_images")
+                if cached_data is not None:
+                    class _MockImage:
+                        def __init__(self, d):
+                            self.tags = d.get('tags', [])
+                            self.id = d.get('id', '')
+                            self.short_id = d.get('short_id', '')
+                    return [_MockImage(d) for d in cached_data]
+                    
             images = self.client.images.list()
+            
+            if cache:
+                from rapidctl.bootstrap.client import CtlClient
+                cm = CtlClient()
+                save_data = []
+                for img in images:
+                    save_data.append({
+                        "id": img.id,
+                        "short_id": getattr(img, 'short_id', img.id[:12] if img.id else ''),
+                        "tags": getattr(img, 'tags', [])
+                    })
+                cm.set_cache("podman_images", save_data, ttl=300)
+                
             return images
         except Exception as e:
             raise PodmanAPIError(f"Failed to list images: {str(e)}")

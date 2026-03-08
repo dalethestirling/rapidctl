@@ -9,7 +9,9 @@ This connector handles macOS-specific requirements for connecting to Podman:
 """
 
 import os
+import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -20,6 +22,15 @@ class OSXConnector:
     def __init__(self):
         self.socket_path: Optional[str] = None
         self.podman_machine_name: Optional[str] = None
+        
+    def is_podman_installed(self) -> bool:
+        """
+        Check if Podman is installed on the system.
+        
+        Returns:
+            bool: True if Podman executable is found, False otherwise
+        """
+        return shutil.which("podman") is not None
         
     def detect_socket(self) -> Optional[str]:
         """
@@ -34,6 +45,9 @@ class OSXConnector:
         Returns:
             str: URI to the Podman socket (e.g., 'unix:///path/to/socket') or None if not found
         """
+        # Fast path: return existing valid socket
+        if self.socket_path and self._validate_socket(self.socket_path):
+            return self.socket_path
         # Check environment variable first
         env_socket = os.environ.get("PODMAN_SOCKET")
         if env_socket:
@@ -110,6 +124,10 @@ class OSXConnector:
         Returns:
             bool: True if Podman is running, False otherwise
         """
+        # Fast path: If socket is valid and accessible, Podman is effectively running
+        if self.socket_path and self._validate_socket(self.socket_path):
+            return True
+            
         try:
             # Check if podman command is available
             result = subprocess.run(
@@ -156,23 +174,56 @@ class OSXConnector:
         Set up the OSX connector and validate Podman availability.
         
         This method:
-        1. Detects the Podman socket
-        2. Validates Podman is running
-        3. Sets up any OS-specific requirements
+        1. Checks if Podman is installed
+        2. Validates Podman is running and prompts to start if not
+        3. Detects the Podman socket
         
         Returns:
             bool: True if setup successful, False otherwise
         """
-        # Detect socket
-        socket = self.detect_socket()
-        if not socket:
+        # 1. Check if podman is installed
+        if not self.is_podman_installed():
+            print("Podman is not installed. Please install it (e.g., using 'brew install podman').")
             return False
             
-        # Check if Podman is running
+        # 2. Check if Podman is running
         if not self.ensure_podman_running():
-            # Socket exists but Podman might not be running
-            # This is not necessarily an error - socket might still work
-            pass
+            # Prompt the user to start the machine
+            try:
+                import sys
+                sys.stdout.flush()
+                response = input("Podman machine is not running. Would you like to start it? [Y/n] ")
+                if response.lower() in ('', 'y', 'yes'):
+                    print("Starting Podman machine (this may take a moment)...")
+                    try:
+                        # Call podman machine start
+                        subprocess.run(
+                            ["podman", "machine", "start"],
+                            check=True,
+                            capture_output=True,
+                            text=True
+                        )
+                        # Wait a moment for the socket to be fully ready
+                        time.sleep(2)
+                        
+                        # Re-verify it's running after start
+                        if not self.ensure_podman_running():
+                            print("Warning: Podman machine started but status could not be verified.")
+                    except subprocess.CalledProcessError as e:
+                        print(f"Failed to start Podman machine: {e.stderr or e.output}")
+                        return False
+                else:
+                    print("Podman machine must be running to use this tool.")
+                    return False
+            except (KeyboardInterrupt, EOFError):
+                print("\nOperation cancelled.")
+                return False
+
+        # 3. Detect socket
+        socket = self.detect_socket()
+        if not socket:
+            print("Could not detect Podman socket automatically.")
+            return False
             
         return True
 

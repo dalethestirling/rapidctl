@@ -3,64 +3,99 @@
 
 import sys
 import os
+import unittest
+from unittest.mock import patch, MagicMock
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rapidctl.bootstrap.connectors.osx import OSXConnector, get_connector
+from rapidctl.bootstrap.connectors.osx import OSXConnector
 
+class TestOSXConnector(unittest.TestCase):
+    def setUp(self):
+        self.connector = OSXConnector()
 
-def test_osx_connector():
-    """Test OSX connector socket detection and setup."""
-    
-    print("=" * 60)
-    print("Testing OSX Connector")
-    print("=" * 60)
-    
-    # Get connector instance
-    connector = get_connector()
-    print(f"\n✓ Created connector instance: {connector}")
-    
-    # Test socket detection
-    print("\n--- Socket Detection ---")
-    socket_path = connector.detect_socket()
-    if socket_path:
-        print(f"✓ Socket detected: {socket_path}")
-    else:
-        print("✗ No socket found")
-        return False
-    
-    # Test Podman running status
-    print("\n--- Podman Status ---")
-    is_running = connector.ensure_podman_running()
-    if is_running:
-        print(f"✓ Podman is running")
-        if connector.podman_machine_name:
-            print(f"  Machine name: {connector.podman_machine_name}")
-    else:
-        print("⚠ Podman machine status could not be determined")
-        print("  (This is OK if Podman is running manually)")
-    
-    # Test full setup
-    print("\n--- Full Setup ---")
-    setup_success = connector.setup()
-    if setup_success:
-        print("✓ Connector setup successful")
-    else:
-        print("✗ Connector setup failed")
-        return False
-    
-    # Get connection info
-    print("\n--- Connection Info ---")
-    info = connector.get_connection_info()
-    for key, value in info.items():
-        print(f"  {key}: {value}")
-    
-    print("\n" + "=" * 60)
-    print("✓ All tests passed!")
-    print("=" * 60)
-    
-    return True
+    @patch('shutil.which')
+    def test_is_podman_installed(self, mock_which):
+        """Test detection of podman executable."""
+        mock_which.return_value = '/usr/local/bin/podman'
+        self.assertTrue(self.connector.is_podman_installed())
 
+        mock_which.return_value = None
+        self.assertFalse(self.connector.is_podman_installed())
+
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.is_podman_installed')
+    def test_setup_not_installed(self, mock_installed):
+        """Test setup fails when podman is not installed."""
+        mock_installed.return_value = False
+        self.assertFalse(self.connector.setup())
+
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.detect_socket')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.ensure_podman_running')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.is_podman_installed')
+    def test_setup_already_running(self, mock_installed, mock_running, mock_detect):
+        """Test setup succeeds immediately if podman is installed and running."""
+        mock_installed.return_value = True
+        mock_running.return_value = True
+        mock_detect.return_value = '/fake/socket'
+        
+        self.assertTrue(self.connector.setup())
+        mock_detect.assert_called_once()
+        mock_running.assert_called_once()
+
+    @patch('builtins.input')
+    @patch('subprocess.run')
+    @patch('time.sleep')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.detect_socket')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.ensure_podman_running')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.is_podman_installed')
+    def test_setup_start_machine_yes(self, mock_installed, mock_running, mock_detect, mock_sleep, mock_run, mock_input):
+        """Test setup prompts and starts podman machine successfully."""
+        mock_installed.return_value = True
+        # First check is False (not running), second check is True (running after start)
+        mock_running.side_effect = [False, True]
+        mock_input.return_value = 'y'
+        mock_detect.return_value = '/fake/socket'
+        
+        self.assertTrue(self.connector.setup())
+        
+        mock_input.assert_called_once()
+        mock_run.assert_called_once_with(
+            ["podman", "machine", "start"],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        self.assertEqual(mock_running.call_count, 2)
+        mock_detect.assert_called_once()
+
+    @patch('builtins.input')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.ensure_podman_running')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.is_podman_installed')
+    def test_setup_start_machine_no(self, mock_installed, mock_running, mock_input):
+        """Test setup fails and aborts if user declines to start machine."""
+        mock_installed.return_value = True
+        mock_running.return_value = False
+        mock_input.return_value = 'n'
+        
+        self.assertFalse(self.connector.setup())
+        mock_input.assert_called_once()
+
+    @patch('builtins.input')
+    @patch('subprocess.run')
+    @patch('time.sleep')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.ensure_podman_running')
+    @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.is_podman_installed')
+    def test_setup_start_machine_fails(self, mock_installed, mock_running, mock_sleep, mock_run, mock_input):
+        """Test setup fails if starting podman machine throws an error."""
+        import subprocess
+        mock_installed.return_value = True
+        mock_running.return_value = False
+        mock_input.return_value = 'y'
+        mock_run.side_effect = subprocess.CalledProcessError(1, ["podman", "machine", "start"], stderr="error")
+        
+        self.assertFalse(self.connector.setup())
+        mock_input.assert_called_once()
+        mock_run.assert_called_once()
 
 if __name__ == "__main__":
-    success = test_osx_connector()
-    sys.exit(0 if success else 1)
+    unittest.main()
