@@ -34,26 +34,12 @@ def test_auto_detection():
     print("✓ Created PodmanCLI instance")
     
     # Connect - should auto-detect socket
-    try:
-        cli._connect_to_podman()
-        print("✓ Connected to Podman using auto-detection")
-    except Exception as e:
-        print(f"✗ Failed to connect: {e}")
-        return False
+    cli._connect_to_podman()
+    print("✓ Connected to Podman using auto-detection")
     
     # Verify connection works by listing images
-    try:
-        images = cli.list_images()
-        print(f"✓ Successfully listed {len(images)} images")
-    except Exception as e:
-        print(f"✗ Failed to list images: {e}")
-        return False
+    images = cli.list_images()
+    print(f"✓ Successfully listed {len(images)} images")
     
     print("=" * 60)
     print("✓ Auto-detection test passed!")
-    return True
-
-
-if __name__ == "__main__":
-    success = test_auto_detection()
-    sys.exit(0 if success else 1)

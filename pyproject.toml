@@ -18,3 +18,8 @@ source = "vcs"
 
 [project.urls]
 Homepage = "https://github.com/dalethestirling/rapidctl"
+
+[tool.pytest.ini_options]
+markers = [
+    "requires_podman: mark test as requiring a running Podman service",
+]

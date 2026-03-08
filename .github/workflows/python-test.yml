@@ -28,6 +28,16 @@ jobs:
         pip install podman pytest
         pip install -e .
         
+    - name: Start Podman service
+      run: |
+        # Start podman system service in background
+        mkdir -p /tmp/podan
+        podman system service unix:///tmp/podman.sock --time 0 &
+        sleep 5
+        # Verify socket exists
+        ls -l /tmp/podman.sock
+        echo "PODMAN_SOCKET=unix:///tmp/podman.sock" >> $GITHUB_ENV
+        
     - name: Test with pytest
       run: |
         pytest tests/
