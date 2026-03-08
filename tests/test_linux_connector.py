@@ -18,14 +18,7 @@ class TestLinuxConnector(unittest.TestCase):
     def setUp(self):
         self.connector = LinuxConnector()
 
-    @patch('shutil.which')
-    def test_is_podman_installed(self, mock_which):
-        """Test detection of podman executable."""
-        mock_which.return_value = '/usr/bin/podman'
-        self.assertTrue(self.connector.is_podman_installed())
 
-        mock_which.return_value = None
-        self.assertFalse(self.connector.is_podman_installed())
 
     @patch('os.environ.get')
     def test_detect_socket_env(self, mock_env_get):

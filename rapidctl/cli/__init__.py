@@ -40,49 +40,19 @@ class PodmanCLI:
         except Exception as e:
             raise PodmanAPIError(f"Failed to connect to Podman API at {socket_path}: {str(e)}")
 
-    def list_images(self, cache: bool = True):
+    def list_images(self):
         """List container images"""
         try:
-            if cache:
-                from rapidctl.bootstrap.client import CtlClient
-                cm = CtlClient()
-                cached_data = cm.get_cache("podman_images")
-                if cached_data is not None:
-                    class _MockImage:
-                        def __init__(self, d):
-                            self.tags = d.get('tags', [])
-                            self.id = d.get('id', '')
-                            self.short_id = d.get('short_id', '')
-                    return [_MockImage(d) for d in cached_data]
-                    
-            images = self.client.images.list()
-            
-            if cache:
-                from rapidctl.bootstrap.client import CtlClient
-                cm = CtlClient()
-                save_data = []
-                for img in images:
-                    save_data.append({
-                        "id": img.id,
-                        "short_id": getattr(img, 'short_id', img.id[:12] if img.id else ''),
-                        "tags": getattr(img, 'tags', [])
-                    })
-                cm.set_cache("podman_images", save_data, ttl=300)
-                
-            return images
+            return self.client.images.list()
         except Exception as e:
             raise PodmanAPIError(f"Failed to list images: {str(e)}")
 
     def pull_image(self, image_name: str) -> Dict[str, Any]:
         """Pull an image from a registry."""
         try:
-            # Extract registry for auth lookup
-            registry = "docker.io"
-            if "/" in image_name:
-                parts = image_name.split("/")
-                # If first part looks like a registry (has . or :)
-                if "." in parts[0] or ":" in parts[0]:
-                    registry = parts[0]
+            # Extract registry for auth checking
+            from rapidctl.cli.tasks import extract_registry
+            registry = extract_registry(image_name)
             
             # Use cached credentials if available
             auth_config = self.auth_configs.get(registry)

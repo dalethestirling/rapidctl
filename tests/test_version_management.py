@@ -93,7 +93,7 @@ class TestVersionActions(unittest.TestCase):
         no_newer = actions.find_newer_version(mock_podman, "repo", "1.2.0")
         self.assertIsNone(no_newer)
 
-    def test_find_newer_version(self):
+    def test_find_newer_version_none_available(self):
         mock_podman = MagicMock()
         mock_img = MagicMock()
         mock_img.tags = ["repo:1.0.0", "repo:1.2.0", "repo:1.1.0"]
@@ -105,10 +105,10 @@ class TestVersionActions(unittest.TestCase):
 
 class TestVersionPersistence(unittest.TestCase):
     def setUp(self):
-        # Mock the state file path to a temporary one
+        from rapidctl.bootstrap.state import StateManager
         self.temp_file = tempfile.NamedTemporaryFile(delete=False)
         self.temp_path = Path(self.temp_file.name)
-        tasks._get_state_file_path = lambda: self.temp_path
+        self.state_manager = StateManager(state_file=self.temp_path)
 
     def tearDown(self):
         if self.temp_path.exists():
@@ -119,10 +119,10 @@ class TestVersionPersistence(unittest.TestCase):
         version = "2.0.0"
         
         # Write state
-        tasks.write_version_state(repo, version)
+        tasks.write_version_state(repo, version, state_manager=self.state_manager)
         
         # Read state back
-        read_version = tasks.read_version_state(repo)
+        read_version = tasks.read_version_state(repo, state_manager=self.state_manager)
         self.assertEqual(read_version, version)
 
     def test_client_persistence_integration(self):
@@ -130,10 +130,10 @@ class TestVersionPersistence(unittest.TestCase):
         version = "3.1.4"
         
         # Manually write state
-        tasks.write_version_state(repo, version)
+        tasks.write_version_state(repo, version, state_manager=self.state_manager)
         
         # Create client - should load version automatically
-        client = CtlClient()
+        client = CtlClient(state_manager=self.state_manager)
         client.container_repo = repo
         client._load_persisted_version() # Trigger reload since repo wasn't set in __init__
         

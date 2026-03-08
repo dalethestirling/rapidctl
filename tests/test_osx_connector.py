@@ -18,14 +18,7 @@ class TestOSXConnector(unittest.TestCase):
     def setUp(self):
         self.connector = OSXConnector()
 
-    @patch('shutil.which')
-    def test_is_podman_installed(self, mock_which):
-        """Test detection of podman executable."""
-        mock_which.return_value = '/usr/local/bin/podman'
-        self.assertTrue(self.connector.is_podman_installed())
 
-        mock_which.return_value = None
-        self.assertFalse(self.connector.is_podman_installed())
 
     @patch('rapidctl.bootstrap.connectors.osx.OSXConnector.is_podman_installed')
     def test_setup_not_installed(self, mock_installed):

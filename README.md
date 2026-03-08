@@ -182,19 +182,28 @@ rapidctl/
 │   ├── bootstrap/
 │   │   ├── __init__.py
 │   │   ├── client.py           # CtlClient configuration
+│   │   ├── state.py            # State and cache management
 │   │   └── connectors/
 │   │       ├── __init__.py
+│   │       ├── base.py         # BaseConnector interface
+│   │       ├── linux.py
 │   │       └── osx.py
 │   ├── cli/
 │   │   ├── __init__.py         # PodmanCLI class
 │   │   ├── main.py             # Main entry point
 │   │   ├── actions.py          # High-level actions
+│   │   ├── mcp.py              # MCP server integration
 │   │   └── tasks.py            # Low-level tasks
+│   ├── utils/
+│   │   └── version.py          # Version utilities
 │   └── errors/
 │       └── __init__.py         # Custom exceptions
 ├── tests/
 │   ├── test_client.py
-│   └── test_container_validator.py
+│   ├── test_container_validator.py
+│   └── ... (comprehensive test suite)
+├── examples/
+│   └── example_connector_usage.py
 ├── pyproject.toml           # Packaging configuration
 └── README.md
 ```
@@ -205,22 +214,20 @@ rapidctl/
 
 ### Known Limitations
 
-- Command execution not yet fully implemented
 - Limited error handling and recovery
-- No CLI argument parsing (--help, --version, etc.)
-- Platform-specific connectors incomplete
 
 ### Roadmap
 
-- [ ] Complete command execution implementation
+- [x] Complete command execution implementation
 - [ ] Add comprehensive error handling
-- [ ] Implement CLI argument parsing
+- [x] Implement CLI argument parsing
+- [x] Implement MCP support
 - [ ] Add logging framework
 - [x] Create packaging configuration (pyproject.toml)
-- [ ] Expand test coverage
+- [x] Expand test coverage
 - [x] Add CI/CD pipeline
 - [x] Platform-specific socket detection (macOS complete)
-- [ ] Add Linux connector
+- [x] Add Linux connector
 - [ ] Add Windows connector
 
 ## 🤝 Contributing

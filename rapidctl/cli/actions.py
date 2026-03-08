@@ -3,11 +3,31 @@ from typing import List, Optional
 from functools import cmp_to_key
 
 def find_container(podman_session, container):
+    """
+    Find a container image locally utilizing caching.
+    
+    Args:
+        podman_session: Authenticated PodmanCLI instance.
+        container (str): The container image name to find.
+        
+    Returns:
+        Optional[str]: The container ID if found locally, else None.
+    """
     image = rapidctl.cli.tasks.local_search(podman_session, container)
 
     return image 
 
 def pull_container(podman_session, container):
+    """
+    Pull a container image from its registry.
+    
+    Args:
+        podman_session: Authenticated PodmanCLI instance.
+        container (str): The container image name to pull.
+        
+    Returns:
+        The pulled image object from podman library.
+    """
     image = podman_session.pull_image(container)
 
     return image
@@ -73,7 +93,6 @@ def apply_latest_available(podman_session, repo: str, current_version: str) -> s
         return newer
         
     return current_version
-    return current_version
 
 
 def authenticate_to_registry(podman_session, image_name: str):
@@ -84,12 +103,9 @@ def authenticate_to_registry(podman_session, image_name: str):
     import getpass
     from urllib.parse import urlparse
     
-    # Simple extraction of registry from image name (e.g., ghcr.io/repo/img)
-    registry = "docker.io" # Default
-    if "/" in image_name:
-        parts = image_name.split("/")
-        if "." in parts[0] or ":" in parts[0]:
-            registry = parts[0]
+    # Extract registry from image name
+    import rapidctl.cli.tasks as tasks
+    registry = tasks.extract_registry(image_name)
             
     print(f"\n--- Registry Authentication Required for {registry} ---")
     username = input(f"Username: ")
@@ -170,3 +186,15 @@ def get_container_subcommands(podman_session, image_name: str, command_path: str
     except Exception as e:
         print(f"Warning: Could not discover subcommands in container: {e}")
         return {}
+
+def display_available_commands(podman_session, container_version, command_path, header: str) -> None:
+    """Action to discover and print available commands for a container."""
+    from rapidctl.cli.tasks import format_command_list
+    
+    available_cmds = get_container_subcommands(podman_session, container_version, command_path)
+    print(header)
+    if available_cmds:
+        print(format_command_list(available_cmds))
+    else:
+        print("  No subcommands found.")
+    return available_cmds

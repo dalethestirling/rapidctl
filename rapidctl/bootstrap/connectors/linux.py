@@ -11,17 +11,14 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from rapidctl.bootstrap.connectors.base import BaseConnector
 
-class LinuxConnector:
+
+class LinuxConnector(BaseConnector):
     """Connector for Podman on Linux systems."""
     
     def __init__(self):
-        self.socket_path: Optional[str] = None
-        
-    def is_podman_installed(self) -> bool:
-        """Check if Podman is installed on the system."""
-        import shutil
-        return shutil.which("podman") is not None
+        super().__init__()
         
     def detect_socket(self) -> Optional[str]:
         """
@@ -85,22 +82,7 @@ class LinuxConnector:
     
     def _validate_socket(self, socket_uri: str) -> bool:
         """Validate that a socket path exists and is accessible."""
-        try:
-            if socket_uri.startswith("unix://"):
-                socket_path = socket_uri[7:]
-            else:
-                socket_path = socket_uri
-                
-            path = Path(socket_path)
-            if not path.exists():
-                return False
-                
-            # Check if it's a socket and accessible
-            return path.is_socket() and os.access(path, os.R_OK | os.W_OK)
-        except PermissionError:
-            return False
-        except Exception:
-            return False
+        return super()._validate_socket(socket_uri)
 
     def setup(self) -> bool:
         """Basic setup for Linux."""

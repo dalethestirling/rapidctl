@@ -15,22 +15,15 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from rapidctl.bootstrap.connectors.base import BaseConnector
 
-class OSXConnector:
+
+class OSXConnector(BaseConnector):
     """Connector for Podman on macOS systems."""
     
     def __init__(self):
-        self.socket_path: Optional[str] = None
+        super().__init__()
         self.podman_machine_name: Optional[str] = None
-        
-    def is_podman_installed(self) -> bool:
-        """
-        Check if Podman is installed on the system.
-        
-        Returns:
-            bool: True if Podman executable is found, False otherwise
-        """
-        return shutil.which("podman") is not None
         
     def detect_socket(self) -> Optional[str]:
         """
@@ -98,21 +91,19 @@ class OSXConnector:
         Returns:
             bool: True if socket is valid and accessible
         """
-        # Extract path from URI
+        # Call the base implementation first
+        if super()._validate_socket(socket_uri):
+            return True
+            
+        # The base implementation does not allow symlinks.
+        # Check if the fallback is a valid symlink to a socket.
         if socket_uri.startswith("unix://"):
             socket_path = socket_uri[7:]
         else:
             socket_path = socket_uri
             
         path = Path(socket_path)
-        
-        # Check if path exists and is a socket
-        if not path.exists():
-            return False
-            
-        # On macOS, check if it's a socket or symlink to a socket
-        if path.is_socket() or path.is_symlink():
-            # Check read/write permissions
+        if path.exists() and path.is_symlink():
             return os.access(path, os.R_OK | os.W_OK)
             
         return False
