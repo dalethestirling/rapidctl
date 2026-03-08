@@ -30,13 +30,21 @@ jobs:
         
     - name: Start Podman service
       run: |
+        # Ensure we have a clean state for the socket
+        rm -f /home/runner/podman.sock
         # Start podman system service in background
-        mkdir -p /tmp/podan
-        podman system service unix:///tmp/podman.sock --time 0 &
-        sleep 5
-        # Verify socket exists
-        ls -l /tmp/podman.sock
-        echo "PODMAN_SOCKET=unix:///tmp/podman.sock" >> $GITHUB_ENV
+        podman system service unix:///home/runner/podman.sock --time 0 &
+        sleep 10
+        # Verify socket exists and Podman can connect to it
+        if [ ! -S /home/runner/podman.sock ]; then
+          echo "Error: Podman socket not found at /home/runner/podman.sock"
+          # Try to show logs if possible (though backgrounded, some info might be in dmesg or similar)
+          podman info
+          exit 1
+        fi
+        echo "✓ Podman socket created successfully"
+        podman --remote --url unix:///home/runner/podman.sock info
+        echo "PODMAN_SOCKET=unix:///home/runner/podman.sock" >> $GITHUB_ENV
         
     - name: Test with pytest
       run: |
