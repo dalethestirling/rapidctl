@@ -3,6 +3,7 @@
 
 import sys
 import os
+import pytest
 
 # Remove PODMAN_SOCKET from environment to test auto-detection
 if "PODMAN_SOCKET" in os.environ:
@@ -13,6 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from rapidctl.cli import PodmanCLI
 
 
+@pytest.mark.requires_podman
 def test_auto_detection():
     """Test that PodmanCLI auto-detects socket without environment variable."""
     

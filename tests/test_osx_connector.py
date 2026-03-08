@@ -10,6 +10,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from rapidctl.bootstrap.connectors.osx import OSXConnector
 
+import pytest
+
+@pytest.mark.requires_podman
 class TestOSXConnector(unittest.TestCase):
     def setUp(self):
         self.connector = OSXConnector()

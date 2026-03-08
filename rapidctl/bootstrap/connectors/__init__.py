@@ -26,8 +26,8 @@ def get_connector():
         from rapidctl.bootstrap.connectors.osx import get_connector as get_osx_connector
         return get_osx_connector()
     elif system == "Linux":
-        # TODO: Implement Linux connector
-        raise NotImplementedError(f"Linux connector not yet implemented")
+        from rapidctl.bootstrap.connectors.linux import get_connector as get_linux_connector
+        return get_linux_connector()
     elif system == "Windows":
         # TODO: Implement Windows connector
         raise NotImplementedError(f"Windows connector not yet implemented")
