@@ -30,6 +30,12 @@ def main(client_obj):
             print("No newer local version found to apply.")
         sys.exit(0)
 
+    # Handle MCP mode
+    if sub_command and sub_command[0] == "mcp":
+        from rapidctl.cli.mcp import run_mcp_server
+        run_mcp_server(client_obj)
+        sys.exit(0)
+
     def get_container():
         return rapidctl.cli.actions.find_container(cli, client_obj.container_version)
 

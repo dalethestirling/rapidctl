@@ -51,7 +51,7 @@ Rapidctl consists of three main layers:
 ### Prerequisites
 
 - Python 3.7+
-- Podman installed and running
+- Podman installed and running (on macOS, you will be automatically prompted to start the machine if it is stopped)
 - `podman` Python package
 
 ### Installation
@@ -109,27 +109,15 @@ The tool will automatically:
 - Pull the image if needed
 - Execute your command inside the container
 
-## 📝 Example: examplectl
+## 📝 Example: rapidctl-examplectl
 
-The repository includes `examplectl` as a reference implementation:
+A complete reference implementation and template for building your own CLI tool can be found in the [rapidctl-examplectl](https://github.com/dalethestirling/rapidctl-examplectl) repository.
 
-```python
-#!/usr/bin/env python
-
-import re
-import sys
-from rapidctl.cli.main import main
-from rapidctl.bootstrap import client
-
-client = client.CtlClient()
-client.container_repo = "ghcr.io/dalethestirling/rapidctl-container"
-client.baseline_version = "1746190043"
-client.client_version = "0.0.1"
-
-if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(main(client))
-```
+It includes:
+- A working CLI wrapper
+- A `Dockerfile` for the container environment
+- Example command orchestration scripts
+- Version management demonstrations
 
 ## 🔧 Configuration
 
@@ -207,7 +195,7 @@ rapidctl/
 ├── tests/
 │   ├── test_client.py
 │   └── test_container_validator.py
-├── examplectl                  # Example CLI tool
+├── pyproject.toml           # Packaging configuration
 └── README.md
 ```
 
@@ -228,9 +216,9 @@ rapidctl/
 - [ ] Add comprehensive error handling
 - [ ] Implement CLI argument parsing
 - [ ] Add logging framework
-- [ ] Create packaging configuration (pyproject.toml)
+- [x] Create packaging configuration (pyproject.toml)
 - [ ] Expand test coverage
-- [ ] Add CI/CD pipeline
+- [x] Add CI/CD pipeline
 - [x] Platform-specific socket detection (macOS complete)
 - [ ] Add Linux connector
 - [ ] Add Windows connector
