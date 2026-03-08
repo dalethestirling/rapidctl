@@ -3,8 +3,18 @@ name: Python Test
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'rapidctl/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/python-test.yml'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'rapidctl/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.github/workflows/python-test.yml'
 
 jobs:
   test:

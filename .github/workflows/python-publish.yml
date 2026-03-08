@@ -6,6 +6,10 @@ on:
   push:
     tags:
       - 'v*'
+    paths:
+      - 'rapidctl/**'
+      - 'pyproject.toml'
+      - '.github/workflows/python-publish.yml'
 
 jobs:
   build-and-publish:
