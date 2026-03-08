@@ -50,7 +50,7 @@ Rapidctl consists of three main layers:
 
 ### Prerequisites
 
-- Python 3.7+
+- Python 3.10+
 - Podman installed and running (on macOS, you will be automatically prompted to start the machine if it is stopped)
 - `podman` Python package
 

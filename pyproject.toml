@@ -7,10 +7,10 @@ name = "rapidctl"
 dynamic = ["version"]
 description = "A Python framework for creating custom CLI tools using Podman"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 dependencies = [
     "podman",
-    "mcp[cli]",
+    "mcp",
 ]
 
 [tool.hatch.version]
