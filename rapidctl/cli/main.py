@@ -32,7 +32,7 @@ def _handle_reserved_commands(client_obj, cli, sub_command) -> bool:
 def _ensure_container_image(client_obj, cli):
     from rapidctl.errors import PodmanAuthError
     
-    container_image = actions.find_container(cli, client_obj.container_version, state_manager=client_obj.state_manager)
+    container_image = actions.find_container(cli, client_obj.container_version)
     
     if not container_image:
         try:
@@ -129,5 +129,8 @@ def main(client_obj):
         _dispatch_subcommand(client_obj, cli, sub_command)
     except SystemExit:
         raise
-    except Exception:
+    except Exception as e:
+        print(f"CRITICAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
