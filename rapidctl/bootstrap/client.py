@@ -102,3 +102,20 @@ class CtlClient:
         import rapidctl.cli.tasks as tasks
         return tasks.sanitize_container_image(container_image)
 
+    def get_execution_context(self):
+        """
+        Return the appropriate ExecutionContext object dynamically based on environment configuration.
+        This serves as the Executor Factory.
+        """
+        import os
+        mode = os.environ.get("RAPIDCTL_EXEC_MODE", "podman")
+        
+        if mode == "podman":
+            from rapidctl.execution.podman import PodmanExecutionContext
+            cli = self.connect()
+            return PodmanExecutionContext(cli, self.container_repo, self.command_path)
+        elif mode == "kubernetes":
+            raise NotImplementedError("KubernetesSidecarContext is not yet implemented.")
+        else:
+            raise ValueError(f"Unknown rapidctl execution mode: {mode}")
+
