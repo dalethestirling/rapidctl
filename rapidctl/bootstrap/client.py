@@ -115,7 +115,8 @@ class CtlClient:
             cli = self.connect()
             return PodmanExecutionContext(cli, self.container_repo, self.command_path)
         elif mode == "kubernetes":
-            raise NotImplementedError("KubernetesSidecarContext is not yet implemented.")
+            from rapidctl.execution.kubernetes import KubernetesExecutionContext
+            return KubernetesExecutionContext(self.container_repo, self.command_path)
         else:
             raise ValueError(f"Unknown rapidctl execution mode: {mode}")
 

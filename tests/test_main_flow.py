@@ -19,14 +19,14 @@ class TestMainFlow(unittest.TestCase):
         self.mock_client.baseline_version = "ubuntu:1.0"
         self.mock_client.command_path = "/cmd/"
 
-    @patch('builtins.print')
-    def test_update_notification_shown(self, mock_print):
+    @patch('rapidctl.cli.main.logger')
+    def test_update_notification_shown(self, mock_logger):
         """Test updates notification is shown if newer exists."""
         self.mock_client.check_for_updates.return_value = "ubuntu:2.0"
         
         main._check_and_notify_updates(self.mock_client)
         
-        mock_print.assert_any_call("--- Newer container version found: ubuntu:2.0 (Current: ubuntu:1.0) ---")
+        mock_logger.info.assert_any_call("--- Newer container version found: ubuntu:2.0 (Current: ubuntu:1.0) ---")
 
     @patch('builtins.print')
     @patch('sys.exit')
@@ -39,17 +39,17 @@ class TestMainFlow(unittest.TestCase):
         mock_exit.assert_called_with(0)
 
     @patch('rapidctl.cli.actions.get_container_subcommands')
-    @patch('builtins.print')
+    @patch('rapidctl.cli.main.logger')
     @patch('sys.exit')
-    def test_invalid_subcommand_shows_suggestions(self, mock_exit, mock_print, mock_get_cmds):
+    def test_invalid_subcommand_shows_suggestions(self, mock_exit, mock_logger, mock_get_cmds):
         """Test that invalid command raises SystemExit and shows Did you mean."""
         mock_get_cmds.return_value = {"build": "build image", "run": "run image"}
         
         main._dispatch_subcommand(self.mock_client, self.mock_client.cli, ['built'])
         
         # Verify it printed the suggestions correctly
-        mock_print.assert_any_call("✗ Error: 'built' is not a valid subcommand.")
-        mock_print.assert_any_call("Did you mean: build?")
+        mock_logger.error.assert_any_call("✗ Error: 'built' is not a valid subcommand.")
+        mock_logger.error.assert_any_call("Did you mean: build?")
         mock_exit.assert_called_with(1)
 
     def test_format_command_list_output(self):

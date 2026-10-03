@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from rapidctl.errors import PodmanAPIError, PodmanAuthError
+from rapidctl.errors import PodmanAPIError, PodmanAuthError, PodmanConnectionError, PodmanCommandError
 import sys
 import json
 import os
@@ -27,18 +27,18 @@ class PodmanCLI:
                 from rapidctl.bootstrap.connectors import detect_socket
                 socket_path = detect_socket()
                 if not socket_path:
-                    raise PodmanAPIError(
+                    raise PodmanConnectionError(
                         "Could not detect Podman socket. "
                         "Please ensure Podman is installed and running, "
                         "or set the PODMAN_SOCKET environment variable."
                     )
             except ImportError as e:
-                raise PodmanAPIError(f"Failed to import connector: {str(e)}")
+                raise PodmanConnectionError(f"Failed to import connector: {str(e)}")
         
         try:
             self.client = podman.client.PodmanClient(base_url=socket_path)
         except Exception as e:
-            raise PodmanAPIError(f"Failed to connect to Podman API at {socket_path}: {str(e)}")
+            raise PodmanConnectionError(f"Failed to connect to Podman API at {socket_path}: {str(e)}")
 
     def list_images(self):
         """List container images"""
@@ -116,11 +116,10 @@ class PodmanCLI:
     def run_container(self, image_name: str, command: List[str], stream: bool = True) -> Any:
         """Run a command in a new container."""
         try:
-            return self.client.containers.run(
+            container = self.client.containers.run(
                 image_name, 
                 command=command, 
-                remove=True, 
-                stream=stream
+                detach=True
             )
         except Exception as e:
             error_msg = str(e)
@@ -135,6 +134,46 @@ class PodmanCLI:
                     "Please verify the command exists at the expected path within the container image."
                 )
             raise PodmanAPIError(f"Failed to run command in container: {error_msg}")
+
+        if not stream:
+            try:
+                # Consume all logs
+                logs = container.logs(stream=False)
+                # Wait for the container to exit
+                result = container.wait()
+                exit_code = result.get("StatusCode", 0)
+                if exit_code != 0:
+                    raise PodmanCommandError(
+                        f"Container command failed with exit code {exit_code}",
+                        exit_code=exit_code
+                    )
+                return logs
+            finally:
+                try:
+                    container.remove()
+                except Exception:
+                    pass
+        else:
+            def log_generator():
+                try:
+                    # Stream container logs
+                    for line in container.logs(stream=True):
+                        yield line
+                    
+                    # Wait for container completion and get exit status
+                    result = container.wait()
+                    exit_code = result.get("StatusCode", 0)
+                    if exit_code != 0:
+                        raise PodmanCommandError(
+                            f"Container command failed with exit code {exit_code}",
+                            exit_code=exit_code
+                        )
+                finally:
+                    try:
+                        container.remove()
+                    except Exception:
+                        pass
+            return log_generator()
 
     def list_containers(self, all_containers: bool = False) -> List[Dict[str, Any]]:
         """List containers."""

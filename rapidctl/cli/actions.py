@@ -1,6 +1,9 @@
 import rapidctl.cli.tasks
 from typing import List, Optional
 from functools import cmp_to_key
+import logging
+
+logger = logging.getLogger("rapidctl.cli.actions")
 
 def find_container(podman_session, container):
     """
@@ -69,7 +72,7 @@ def ensure_version(podman_session, repo: str, version: str):
     image_id = find_container(podman_session, full_image_ref)
     
     if not image_id:
-        print(f"Version {version} not found locally. Pulling...")
+        logger.info(f"Version {version} not found locally. Pulling...")
         image = pull_container(podman_session, full_image_ref)
         if isinstance(image, dict):
             return image.get("Id")
@@ -107,16 +110,16 @@ def authenticate_to_registry(podman_session, image_name: str):
     import rapidctl.cli.tasks as tasks
     registry = tasks.extract_registry(image_name)
             
-    print(f"\n--- Registry Authentication Required for {registry} ---")
+    logger.info(f"\n--- Registry Authentication Required for {registry} ---")
     username = input(f"Username: ")
     password = getpass.getpass(f"Password: ")
     
     try:
         rapidctl.cli.tasks.registry_login(podman_session, registry, username, password)
-        print("✓ Login successful")
+        logger.info("✓ Login successful")
         return True
     except Exception as e:
-        print(f"✗ Login failed: {e}")
+        logger.error(f"✗ Login failed: {e}")
         return False
 
 
@@ -128,7 +131,7 @@ def run_container_command(podman_session, image_name: str, command_path: str, ar
     import os
     
     if not args:
-        print("No command provided to execute.")
+        logger.warning("No command provided to execute.")
         return
 
     # Subcommand is the first argument
@@ -184,17 +187,25 @@ def get_container_subcommands(podman_session, image_name: str, command_path: str
         )
         return {cmd: "" for cmd in sorted(commands) if cmd}
     except Exception as e:
-        print(f"Warning: Could not discover subcommands in container: {e}")
+        logger.warning(f"Warning: Could not discover subcommands in container: {e}")
         return {}
 
 def display_available_commands(podman_session, container_version, command_path, header: str) -> None:
-    """Action to discover and print available commands for a container."""
-    from rapidctl.cli.tasks import format_command_list
+    """Action to discover and print available commands for a container using Rich."""
+    from rich.console import Console
+    from rich.table import Table
     
     available_cmds = get_container_subcommands(podman_session, container_version, command_path)
-    print(header)
+    console = Console()
+    console.print(f"[bold green]{header}[/bold green]")
     if available_cmds:
-        print(format_command_list(available_cmds))
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Command", style="cyan")
+        table.add_column("Description")
+        for cmd, info in available_cmds.items():
+            summary = info.get("summary", "") if isinstance(info, dict) else str(info)
+            table.add_row(cmd, summary)
+        console.print(table)
     else:
-        print("  No subcommands found.")
+        console.print("  [red]No subcommands found.[/red]")
     return available_cmds

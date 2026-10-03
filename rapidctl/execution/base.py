@@ -22,12 +22,12 @@ class ExecutionContext(ABC):
         pass
 
     @abstractmethod
-    def get_supported_commands(self) -> Dict[str, str]:
+    def get_supported_commands(self) -> Dict[str, Dict]:
         """
         Discover and return a manifest of available subcommands.
         
         Returns:
-            Dict[str, str]: A dictionary mapping command names to their summaries.
+            Dict[str, Dict]: A dictionary mapping command names to their full metadata.
         """
         pass
 

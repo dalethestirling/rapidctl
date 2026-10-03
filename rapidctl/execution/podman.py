@@ -56,7 +56,7 @@ class PodmanExecutionContext(ExecutionContext):
             else:
                 yield str(line)
 
-    def get_supported_commands(self) -> Dict[str, str]:
+    def get_supported_commands(self) -> Dict[str, Dict]:
         """
         Discover subcommands by reading the commands manifest or listing files inside the container.
         """
@@ -74,10 +74,8 @@ class PodmanExecutionContext(ExecutionContext):
             )
             if output:
                 metadata = json.loads("\n".join(output))
-                result = {}
-                for cmd, info in metadata.items():
-                    result[cmd] = info.get("summary", "")
-                return result
+                return metadata
+
         except Exception:
             pass # Fallback to ls -1
             
@@ -87,6 +85,6 @@ class PodmanExecutionContext(ExecutionContext):
                 self.resolved_image, 
                 ["ls", "-1", self.command_path]
             )
-            return {cmd: "" for cmd in sorted(commands) if cmd}
+            return {cmd: {"summary": ""} for cmd in sorted(commands) if cmd}
         except Exception as e:
             return {}

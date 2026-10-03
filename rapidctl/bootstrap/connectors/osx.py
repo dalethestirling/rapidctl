@@ -12,10 +12,13 @@ import os
 import shutil
 import subprocess
 import time
+import logging
 from pathlib import Path
 from typing import Optional
 
 from rapidctl.bootstrap.connectors.base import BaseConnector
+
+logger = logging.getLogger("rapidctl.bootstrap.connectors.osx")
 
 
 class OSXConnector(BaseConnector):
@@ -174,7 +177,7 @@ class OSXConnector(BaseConnector):
         """
         # 1. Check if podman is installed
         if not self.is_podman_installed():
-            print("Podman is not installed. Please install it (e.g., using 'brew install podman').")
+            logger.error("Podman is not installed. Please install it (e.g., using 'brew install podman').")
             return False
             
         # 2. Check if Podman is running
@@ -185,7 +188,7 @@ class OSXConnector(BaseConnector):
                 sys.stdout.flush()
                 response = input("Podman machine is not running. Would you like to start it? [Y/n] ")
                 if response.lower() in ('', 'y', 'yes'):
-                    print("Starting Podman machine (this may take a moment)...")
+                    logger.info("Starting Podman machine (this may take a moment)...")
                     try:
                         # Call podman machine start
                         subprocess.run(
@@ -199,21 +202,21 @@ class OSXConnector(BaseConnector):
                         
                         # Re-verify it's running after start
                         if not self.ensure_podman_running():
-                            print("Warning: Podman machine started but status could not be verified.")
+                            logger.warning("Warning: Podman machine started but status could not be verified.")
                     except subprocess.CalledProcessError as e:
-                        print(f"Failed to start Podman machine: {e.stderr or e.output}")
+                        logger.error(f"Failed to start Podman machine: {e.stderr or e.output}")
                         return False
                 else:
-                    print("Podman machine must be running to use this tool.")
+                    logger.error("Podman machine must be running to use this tool.")
                     return False
             except (KeyboardInterrupt, EOFError):
-                print("\nOperation cancelled.")
+                logger.error("\nOperation cancelled.")
                 return False
 
         # 3. Detect socket
         socket = self.detect_socket()
         if not socket:
-            print("Could not detect Podman socket automatically.")
+            logger.error("Could not detect Podman socket automatically.")
             return False
             
         return True

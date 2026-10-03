@@ -29,8 +29,8 @@ class TestMCPServer(unittest.TestCase):
         mock_fast_mcp.return_value = mock_mcp_instance
         
         self.mock_context.get_supported_commands.return_value = {
-            "build": "Build an image",
-            "test": "Run tests"
+            "build": {"summary": "Build an image"},
+            "test": {"summary": "Run tests"}
         }
         
         run_mcp_server(self.mock_client)
