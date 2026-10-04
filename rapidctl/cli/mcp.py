@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import FastMCP
 from pydantic import create_model, Field, BaseModel
-from typing import List
+from typing import List, Optional, Dict, Any
 import sys
 
 class CommandResult(BaseModel):
@@ -11,12 +11,45 @@ class CommandResult(BaseModel):
     command: str
     args: List[str]
 
-def run_mcp_server(client_obj):
+class CommandMetadata(BaseModel):
+    """Metadata for a single command."""
+    name: str
+    summary: str
+    parameters: Optional[Dict[str, Any]] = None
+    argument_mapping: Optional[Dict[str, Any]] = None
+
+class VersionInfo(BaseModel):
+    """Version information for the toolset."""
+    container_repo: str
+    baseline_version: str
+    client_version: str
+    available_versions: List[str]
+    latest_local_version: Optional[str] = None
+    has_update: bool = False
+
+class ToolsetInfo(BaseModel):
+    """Complete toolset context for agents."""
+    name: str
+    version: str
+    container_repo: str
+    command_path: str
+    execution_mode: str
+    commands: List[CommandMetadata]
+
+class HelpArgs(BaseModel):
+    command: str = Field(description="Name of the command to get help for")
+
+def run_mcp_server(client_obj, tool_prefix: str = "rapidctl_"):
     """
     Starts an MCP server that exposes container subcommands as tools.
+    
+    Args:
+        client_obj: The CtlClient instance with configuration
+        tool_prefix: Prefix for meta-tool names (default: "rapidctl_")
     """
     # Create the MCP server
-    mcp = FastMCP(f"rapidctl-{client_obj.container_repo.split('/')[-1]}")
+    server_name = f"rapidctl-{client_obj.container_repo.split('/')[-1]}"
+    mcp = FastMCP(server_name)
 
     # Set up the execution context
     context = client_obj.get_execution_context()
@@ -31,6 +64,108 @@ def run_mcp_server(client_obj):
         print(f"Failed to discover commands: {e}", file=sys.stderr)
         available_cmds = {}
 
+    # Build command metadata list for meta-tools
+    command_metadata_list = []
+    for cmd, metadata in available_cmds.items():
+        if not isinstance(metadata, dict):
+            metadata = {"summary": str(metadata)}
+        command_metadata_list.append(CommandMetadata(
+            name=cmd,
+            summary=metadata.get("summary", f"Execute {cmd} in the container environment."),
+            parameters=metadata.get("parameters"),
+            argument_mapping=metadata.get("argument_mapping")
+        ))
+
+    # ========== META-TOOLS ==========
+    
+    # Tool: rapidctl_version - Get version info
+    async def version_tool() -> VersionInfo:
+        """Get version information and check for available updates."""
+        # Get available local versions
+        from rapidctl.cli.actions import list_local_versions
+        available_versions = []
+        latest_local = None
+        has_update = False
+        
+        try:
+            cli = client_obj.cli or client_obj.connect()
+            available_versions = list_local_versions(cli, client_obj.container_repo)
+            if available_versions:
+                latest_local = available_versions[0]
+                has_update = latest_local != client_obj.baseline_version
+        except Exception:
+            pass
+        
+        return VersionInfo(
+            container_repo=client_obj.container_repo,
+            baseline_version=client_obj.baseline_version,
+            client_version=client_obj.client_version,
+            available_versions=available_versions,
+            latest_local_version=latest_local,
+            has_update=has_update
+        )
+
+    mcp.add_tool(
+        name=f"{tool_prefix}version",
+        fn=version_tool,
+        description="Get version information and check for available updates."
+    )
+
+    # Tool: rapidctl_list_commands - List all available commands
+    async def list_commands_tool() -> List[CommandMetadata]:
+        """List all available container commands with their metadata."""
+        return command_metadata_list
+
+    mcp.add_tool(
+        name=f"{tool_prefix}list_commands",
+        fn=list_commands_tool,
+        description="List all available container commands with their metadata."
+    )
+
+    # Tool: rapidctl_help - Get detailed help for a specific command
+    async def help_tool(args: HelpArgs) -> CommandMetadata:
+        """Get detailed help for a specific command."""
+        for cmd_meta in command_metadata_list:
+            if cmd_meta.name == args.command:
+                return cmd_meta
+        # Return empty metadata if not found (structured output)
+        return CommandMetadata(
+            name=args.command,
+            summary="Command not found",
+            parameters=None,
+            argument_mapping=None
+        )
+
+    mcp.add_tool(
+        name=f"{tool_prefix}help",
+        fn=help_tool,
+        description="Get detailed help for a specific command."
+    )
+
+    # Tool: rapidctl_context - Get execution context for agents
+    async def context_tool() -> ToolsetInfo:
+        """Get execution context information for agent orchestration."""
+        # Detect execution mode
+        import os
+        exec_mode = os.environ.get("RAPIDCTL_EXEC_MODE", "podman")
+        
+        return ToolsetInfo(
+            name=server_name,
+            version=client_obj.client_version,
+            container_repo=client_obj.container_repo,
+            command_path=client_obj.command_path,
+            execution_mode=exec_mode,
+            commands=command_metadata_list
+        )
+
+    mcp.add_tool(
+        name=f"{tool_prefix}context",
+        fn=context_tool,
+        description="Get execution context information for agent orchestration."
+    )
+
+    # ========== CONTAINER COMMAND TOOLS ==========
+    
     # Register each subcommand as a tool
     for cmd, metadata in available_cmds.items():
         if not isinstance(metadata, dict):
