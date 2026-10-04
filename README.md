@@ -314,6 +314,81 @@ Example validated formats:
 - `registry.example.com/myproject/myimage:v1.2.3`
 - `localhost:5000/my-image`
 
+## 📋 Container Contract
+
+Rapidctl expects container images to conform to a specific contract for command discovery and execution. This enables the ecosystem pattern where **rapidctl-container** (or compatible forks) provide the command hosting environment.
+
+### Required Container Structure
+
+| Path | Purpose | Required |
+|------|---------|----------|
+| `/opt/rapidctl/cmd/` | Directory containing executable command scripts/binaries | Yes |
+| `/opt/rapidctl/commands.json` | Metadata for command discovery, help, and MCP schemas | Yes |
+
+### commands.json Schema
+
+```json
+{
+  "command-name": {
+    "summary": "Brief description for help text",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "param_name": {
+          "type": "string|boolean|integer|...",
+          "description": "Parameter description",
+          "default": "optional default value"
+        }
+      },
+      "required": ["param_name"]
+    },
+    "argument_mapping": {
+      "positional": ["param_name"],
+      "flags": {
+        "param_name": ["-s", "--long-flag"]
+      }
+    }
+  }
+}
+```
+
+- **summary**: Used in help tables and MCP tool descriptions
+- **parameters**: JSON Schema for MCP tool input validation and CLI argument parsing
+- **argument_mapping**: Maps CLI arguments to parameter names
+  - `positional`: Ordered positional arguments
+  - `flags`: Maps flag names to parameter names (supports short/long forms)
+
+### Command Requirements
+
+- Commands must be **executable files** in `/opt/rapidctl/cmd/`
+- Can be any interpreter: bash, python, compiled binaries, etc.
+- Shebang (`#!/bin/bash`, `#!/usr/bin/env python3`) required for scripts
+- Exit codes: 0 = success, non-zero = failure (surfaced to caller)
+- Stdout/stderr streamed directly to caller
+
+### Versioning Expectations
+
+- Images should be tagged with **semantic versions** (`v1.2.3`) or **timestamps** (`1771729391`)
+- `latest` tag should always point to the newest stable release
+- Breaking changes to `commands.json` schema or command removal require version coordination
+
+### Base Image Reference
+
+The reference implementation is **rapidctl-container**:
+- Base: `registry.access.redhat.com/ubi9/ubi` (minimal, no Python)
+- Commands: `hello-world`, `reflector` (bash scripts)
+- Published: `ghcr.io/dalethestirling/rapidctl-container:<timestamp>` and `latest`
+- Extension: Fork → add to `cmd/` → update `commands.json` → add `dnf install` to Containerfile
+
+### Integration with CtlClient
+
+```python
+client = CtlClient()
+client.container_repo = "ghcr.io/your-org/your-container"  # Your fork
+client.baseline_version = "latest"  # or specific tag
+client.command_path = "/opt/rapidctl/cmd/"  # Fixed by contract
+```
+
 ## 🧪 Testing
 
 Run the test suite:
