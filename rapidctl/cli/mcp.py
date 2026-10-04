@@ -81,20 +81,24 @@ def run_mcp_server(client_obj, tool_prefix: str = "rapidctl_"):
     # Tool: rapidctl_version - Get version info
     async def version_tool() -> VersionInfo:
         """Get version information and check for available updates."""
-        # Get available local versions
+        # Get available local versions (only in Podman mode)
         from rapidctl.cli.actions import list_local_versions
+        import os
+        exec_mode = os.environ.get("RAPIDCTL_EXEC_MODE", "podman")
+        
         available_versions = []
         latest_local = None
         has_update = False
         
-        try:
-            cli = client_obj.cli or client_obj.connect()
-            available_versions = list_local_versions(cli, client_obj.container_repo)
-            if available_versions:
-                latest_local = available_versions[0]
-                has_update = latest_local != client_obj.baseline_version
-        except Exception:
-            pass
+        if exec_mode == "podman":
+            try:
+                cli = client_obj.cli or client_obj.connect()
+                available_versions = list_local_versions(cli, client_obj.container_repo)
+                if available_versions:
+                    latest_local = available_versions[0]
+                    has_update = latest_local != client_obj.baseline_version
+            except Exception:
+                pass  # In Kubernetes mode or if Podman unavailable, skip local version check
         
         return VersionInfo(
             container_repo=client_obj.container_repo,

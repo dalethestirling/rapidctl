@@ -389,5 +389,69 @@ class TestMCPServer(unittest.TestCase):
         self.assertEqual(len(result.commands), 1)
         self.assertEqual(result.commands[0].name, "hello-world")
 
+    @patch('rapidctl.cli.mcp.FastMCP')
+    def test_version_tool_kubernetes_mode(self, mock_fast_mcp):
+        """Test rapidctl_version tool in Kubernetes mode (no local version check)."""
+        self.mock_context.get_supported_commands.return_value = {
+            "hello-world": {"summary": "Prints a greeting"}
+        }
+        mock_mcp_instance = MagicMock()
+        mock_fast_mcp.return_value = mock_mcp_instance
+        
+        registered_tools = {}
+        def mock_add_tool(name, fn, description):
+            registered_tools[name] = fn
+            
+        mock_mcp_instance.add_tool = mock_add_tool
+        
+        # Set Kubernetes mode via environment
+        import os
+        os.environ["RAPIDCTL_EXEC_MODE"] = "kubernetes"
+        try:
+            run_mcp_server(self.mock_client)
+            
+            version_func = registered_tools["rapidctl_version"]
+            result = asyncio.run(version_func())
+            
+            self.assertIsInstance(result, VersionInfo)
+            self.assertEqual(result.container_repo, "docker.io/library/ubuntu")
+            self.assertEqual(result.baseline_version, "1771729391")
+            self.assertEqual(result.client_version, "0.0.1")
+            # In Kubernetes mode, no local versions available
+            self.assertEqual(result.available_versions, [])
+            self.assertIsNone(result.latest_local_version)
+            self.assertFalse(result.has_update)
+        finally:
+            os.environ["RAPIDCTL_EXEC_MODE"] = "podman"
+
+    @patch('rapidctl.cli.mcp.FastMCP')
+    def test_context_tool_kubernetes_mode(self, mock_fast_mcp):
+        """Test rapidctl_context tool returns kubernetes execution mode."""
+        self.mock_context.get_supported_commands.return_value = {
+            "hello-world": {"summary": "Prints a greeting"}
+        }
+        mock_mcp_instance = MagicMock()
+        mock_fast_mcp.return_value = mock_mcp_instance
+        
+        registered_tools = {}
+        def mock_add_tool(name, fn, description):
+            registered_tools[name] = fn
+            
+        mock_mcp_instance.add_tool = mock_add_tool
+        
+        # Set Kubernetes mode via environment
+        import os
+        os.environ["RAPIDCTL_EXEC_MODE"] = "kubernetes"
+        try:
+            run_mcp_server(self.mock_client)
+            
+            context_func = registered_tools["rapidctl_context"]
+            result = asyncio.run(context_func())
+            
+            self.assertIsInstance(result, ToolsetInfo)
+            self.assertEqual(result.execution_mode, "kubernetes")
+        finally:
+            os.environ["RAPIDCTL_EXEC_MODE"] = "podman"
+
 if __name__ == "__main__":
     unittest.main()
