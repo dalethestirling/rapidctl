@@ -119,6 +119,160 @@ It includes:
 - Example command orchestration scripts
 - Version management demonstrations
 
+## 🤖 MCP Server Integration
+
+Rapidctl includes a Model Context Protocol (MCP) server that exposes all CLI capabilities as tools for AI agents. This enables deterministic, containerized command execution through standardized tool calls.
+
+### Starting the MCP Server
+
+Add an `mcp` subcommand to your CLI wrapper:
+
+```python
+# In your CLI wrapper (e.g., myctl)
+if __name__ == '__main__':
+    # Handle MCP server subcommand
+    if len(sys.argv) > 1 and sys.argv[1] == "mcp":
+        sys.argv.pop(1)
+        from rapidctl.cli.mcp import run_mcp_server
+        run_mcp_server(client)
+        sys.exit(0)
+    # ... rest of CLI
+```
+
+Or run directly:
+```bash
+./examplectl mcp
+```
+
+### Available MCP Tools
+
+The MCP server exposes two categories of tools:
+
+#### Meta-Tools (prefixed with `rapidctl_` by default)
+
+| Tool | Description | Output |
+|------|-------------|--------|
+| `rapidctl_version` | Get version info & check for local updates | `VersionInfo` |
+| `rapidctl_list_commands` | List all available container commands | `List[CommandMetadata]` |
+| `rapidctl_help` | Get detailed help for a specific command | `CommandMetadata` |
+| `rapidctl_context` | Get execution context for agent orchestration | `ToolsetInfo` |
+
+#### Container Command Tools
+
+Each container subcommand (e.g., `hello-world`, `reflector`) is exposed as a tool with its own parameter schema derived from `commands.json`.
+
+**Example `hello-world` tool:**
+```json
+{
+  "name": "hello-world",
+  "description": "Prints a simple greeting.",
+  "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false}
+}
+```
+
+**Example `reflector` tool:**
+```json
+{
+  "name": "reflector",
+  "description": "Echoes whatever input is provided.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "input_string": {"type": "string", "description": "The string to reflect back."}
+    },
+    "required": ["input_string"]
+  }
+}
+```
+
+### Structured Output
+
+All tools return structured `CommandResult` objects:
+
+```python
+class CommandResult(BaseModel):
+    success: bool
+    output: str
+    exit_code: int
+    command: str
+    args: List[str]
+```
+
+For meta-tools, typed Pydantic models are returned (`VersionInfo`, `CommandMetadata`, `ToolsetInfo`).
+
+### Configuring in AI Clients
+
+**Claude Desktop** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "examplectl": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/ABSOLUTE/PATH/TO/examplectl",
+        "run",
+        "examplectl",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+**Cursor / VS Code** (`.cursor/mcp.json` or `.vscode/mcp.json`):
+```json
+{
+  "mcpServers": {
+    "examplectl": {
+      "command": "uv",
+      "args": ["--directory", "/ABSOLUTE/PATH/TO/examplectl", "run", "examplectl", "mcp"]
+    }
+  }
+}
+```
+
+### Execution Modes
+
+The MCP server supports two execution modes via `RAPIDCTL_EXEC_MODE`:
+
+- **`podman`** (default): Local Podman/Docker execution
+- **`kubernetes`**: Remote Kubernetes Job execution (for server-side deployments)
+
+```bash
+# Kubernetes mode
+export RAPIDCTL_EXEC_MODE=kubernetes
+./examplectl mcp
+```
+
+### Custom Tool Prefix
+
+To avoid naming conflicts when aggregating multiple MCP servers, customize the meta-tool prefix:
+
+```python
+run_mcp_server(client, tool_prefix="myctl_")
+# Tools: myctl_version, myctl_list_commands, myctl_help, myctl_context
+```
+
+### Agent Usage Example
+
+An AI agent can use the tools to execute deterministic workflows:
+
+```python
+# 1. Discover available commands
+commands = await mcp.call_tool("rapidctl_list_commands", {})
+
+# 2. Get help for a specific command
+help_info = await mcp.call_tool("rapidctl_help", {"command": "deploy"})
+
+# 3. Execute container command with structured output
+result = await mcp.call_tool("deploy", {"environment": "staging", "version": "v1.2.3"})
+if result.success:
+    print(f"Deployed successfully: {result.output}")
+else:
+    print(f"Deployment failed: {result.output}")
+```
+
 ## 🔧 Configuration
 
 ### CtlClient Properties
