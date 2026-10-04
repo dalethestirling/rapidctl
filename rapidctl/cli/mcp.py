@@ -12,17 +12,14 @@ def run_mcp_server(client_obj):
     # Set up the execution context
     context = client_obj.get_execution_context()
     
-    # Ensure readiness via the execution context 
-    try:
-        context.ensure_readiness(client_obj.baseline_version)
-    except Exception as e:
-        print(f"Failed to ensure readiness: {e}")
+    # Ensure readiness via the execution context - raise on failure
+    context.ensure_readiness(client_obj.baseline_version)
 
     # Discover available subcommands
     try:
         available_cmds = context.get_supported_commands()
     except Exception as e:
-        print(f"Failed to discover commands: {e}")
+        print(f"Failed to discover commands: {e}", file=sys.stderr)
         available_cmds = {}
 
     # Register each subcommand as a tool
@@ -52,7 +49,8 @@ def run_mcp_server(client_obj):
         ArgsModel = create_model(f"{cmd}_args", **fields)
 
         # 2. Define the handler utilizing the dynamic model
-        def make_handler(command_name, arg_mapping):
+        # Capture ArgsModel in default argument to fix closure bug
+        def make_handler(command_name, arg_mapping, ArgsModel=ArgsModel):
             async def handler(args: ArgsModel) -> str:
                 cli_args = []
                 args_dict = args.model_dump(exclude_none=True)

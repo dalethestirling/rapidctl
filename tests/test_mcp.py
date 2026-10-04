@@ -43,7 +43,25 @@ class TestMCPServer(unittest.TestCase):
     @patch('rapidctl.cli.mcp.FastMCP')
     def test_mcp_handler_executes_command(self, mock_fast_mcp):
         """Test the registered tool handler actually executes and captures stdout."""
-        self.mock_context.get_supported_commands.return_value = {"build": "Build an image"}
+        # Provide metadata with parameters and argument_mapping for proper handler creation
+        self.mock_context.get_supported_commands.return_value = {
+            "build": {
+                "summary": "Build an image",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "force": {"type": "boolean", "description": "Force rebuild"},
+                        "tag": {"type": "string", "description": "Tag for the image"}
+                    }
+                },
+                "argument_mapping": {
+                    "flags": {
+                        "force": "--force",
+                        "tag": "--tag"
+                    }
+                }
+            }
+        }
         mock_mcp_instance = MagicMock()
         mock_fast_mcp.return_value = mock_mcp_instance
         
@@ -60,8 +78,15 @@ class TestMCPServer(unittest.TestCase):
         # Simulate generator output for run_command
         self.mock_context.run_command.return_value = iter(["Build ", "successful!"])
         
-        # Call the registered async function
-        result = asyncio.run(registered_func(force=True, tag="v1"))
+        # Get the ArgsModel from the handler's closure and create an instance
+        # The handler expects a Pydantic model, not kwargs
+        import inspect
+        handler_sig = inspect.signature(registered_func)
+        args_param = list(handler_sig.parameters.values())[0]
+        ArgsModel = args_param.annotation
+        
+        # Call the registered async function with model instance
+        result = asyncio.run(registered_func(ArgsModel(force=True, tag="v1")))
         
         # Verify kwargs were converted to args properly
         self.mock_context.run_command.assert_called_once_with(
@@ -74,7 +99,13 @@ class TestMCPServer(unittest.TestCase):
     @patch('rapidctl.cli.mcp.FastMCP')
     def test_mcp_handler_handles_error(self, mock_fast_mcp):
         """Test the registered tool handler handles exceptions safely."""
-        self.mock_context.get_supported_commands.return_value = {"build": "Build an image"}
+        self.mock_context.get_supported_commands.return_value = {
+            "build": {
+                "summary": "Build an image",
+                "parameters": {"type": "object", "properties": {}},
+                "argument_mapping": {}
+            }
+        }
         mock_mcp_instance = MagicMock()
         mock_fast_mcp.return_value = mock_mcp_instance
         
@@ -88,10 +119,68 @@ class TestMCPServer(unittest.TestCase):
         mock_mcp_instance.add_tool = mock_add_tool
         run_mcp_server(self.mock_client)
         
-        # Call the registered async function
-        result = asyncio.run(registered_func())
+        # Get the ArgsModel from the handler's closure
+        import inspect
+        handler_sig = inspect.signature(registered_func)
+        args_param = list(handler_sig.parameters.values())[0]
+        ArgsModel = args_param.annotation
+        
+        # Call the registered async function with empty model instance
+        result = asyncio.run(registered_func(ArgsModel()))
         
         self.assertEqual(result, "Error: Container crashed")
+
+    @patch('rapidctl.cli.mcp.FastMCP')
+    def test_mcp_handler_closure_bug_fixed(self, mock_fast_mcp):
+        """Test that each command gets its own ArgsModel (closure bug fix)."""
+        self.mock_context.get_supported_commands.return_value = {
+            "cmd_a": {
+                "summary": "Command A",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "arg_a": {"type": "string", "description": "Arg for A"}
+                    }
+                },
+                "argument_mapping": {"positional": ["arg_a"]}
+            },
+            "cmd_b": {
+                "summary": "Command B",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "arg_b": {"type": "integer", "description": "Arg for B"}
+                    }
+                },
+                "argument_mapping": {"positional": ["arg_b"]}
+            }
+        }
+        mock_mcp_instance = MagicMock()
+        mock_fast_mcp.return_value = mock_mcp_instance
+        
+        registered_handlers = {}
+        def mock_add_tool(name, fn, description):
+            registered_handlers[name] = fn
+            
+        mock_mcp_instance.add_tool = mock_add_tool
+        
+        run_mcp_server(self.mock_client)
+        
+        # Verify each handler has its own ArgsModel with correct fields
+        import inspect
+        for cmd_name, handler in registered_handlers.items():
+            handler_sig = inspect.signature(handler)
+            args_param = list(handler_sig.parameters.values())[0]
+            ArgsModel = args_param.annotation
+            
+            if cmd_name == "cmd_a":
+                # Should have arg_a field
+                model_instance = ArgsModel(arg_a="test")
+                self.assertEqual(model_instance.arg_a, "test")
+            elif cmd_name == "cmd_b":
+                # Should have arg_b field
+                model_instance = ArgsModel(arg_b=42)
+                self.assertEqual(model_instance.arg_b, 42)
 
 if __name__ == "__main__":
     unittest.main()
