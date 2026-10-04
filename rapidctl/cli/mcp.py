@@ -1,6 +1,15 @@
 from mcp.server.fastmcp import FastMCP
-from pydantic import create_model, Field
+from pydantic import create_model, Field, BaseModel
+from typing import List
 import sys
+
+class CommandResult(BaseModel):
+    """Standard result for container command execution."""
+    success: bool
+    output: str
+    exit_code: int
+    command: str
+    args: List[str]
 
 def run_mcp_server(client_obj):
     """
@@ -51,7 +60,7 @@ def run_mcp_server(client_obj):
         # 2. Define the handler utilizing the dynamic model
         # Capture ArgsModel in default argument to fix closure bug
         def make_handler(command_name, arg_mapping, ArgsModel=ArgsModel):
-            async def handler(args: ArgsModel) -> str:
+            async def handler(args: ArgsModel) -> CommandResult:
                 cli_args = []
                 args_dict = args.model_dump(exclude_none=True)
                 
@@ -76,11 +85,24 @@ def run_mcp_server(client_obj):
                         
                 try:
                     output = ""
+                    exit_code = 0
                     for chunk in context.run_command(command_name, cli_args):
                         output += chunk
-                    return output
+                    return CommandResult(
+                        success=True,
+                        output=output,
+                        exit_code=exit_code,
+                        command=command_name,
+                        args=cli_args
+                    )
                 except Exception as e:
-                    return f"Error: {e}"
+                    return CommandResult(
+                        success=False,
+                        output=f"Error: {e}",
+                        exit_code=1,
+                        command=command_name,
+                        args=cli_args
+                    )
             return handler
 
         mcp.add_tool(

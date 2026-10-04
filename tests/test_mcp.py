@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rapidctl.cli.mcp import run_mcp_server
+from rapidctl.cli.mcp import run_mcp_server, CommandResult
 
 class TestMCPServer(unittest.TestCase):
     def setUp(self):
@@ -94,7 +94,13 @@ class TestMCPServer(unittest.TestCase):
             ["--force", "--tag", "v1"]
         )
         
-        self.assertEqual(result, "Build successful!")
+        # Verify structured output
+        self.assertIsInstance(result, CommandResult)
+        self.assertTrue(result.success)
+        self.assertEqual(result.output, "Build successful!")
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.command, "build")
+        self.assertEqual(result.args, ["--force", "--tag", "v1"])
 
     @patch('rapidctl.cli.mcp.FastMCP')
     def test_mcp_handler_handles_error(self, mock_fast_mcp):
@@ -128,7 +134,13 @@ class TestMCPServer(unittest.TestCase):
         # Call the registered async function with empty model instance
         result = asyncio.run(registered_func(ArgsModel()))
         
-        self.assertEqual(result, "Error: Container crashed")
+        # Verify structured error output
+        self.assertIsInstance(result, CommandResult)
+        self.assertFalse(result.success)
+        self.assertEqual(result.output, "Error: Container crashed")
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(result.command, "build")
+        self.assertEqual(result.args, [])
 
     @patch('rapidctl.cli.mcp.FastMCP')
     def test_mcp_handler_closure_bug_fixed(self, mock_fast_mcp):
