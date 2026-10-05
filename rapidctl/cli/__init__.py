@@ -137,11 +137,11 @@ class PodmanCLI:
 
         if not stream:
             try:
-                # Consume all logs
-                logs = container.logs(stream=False)
+                # Consume all logs - in podman-py 5.x, logs() returns a generator regardless of stream parameter
+                logs_gen = container.logs(stream=False)
+                logs = b"".join(logs_gen) if hasattr(logs_gen, '__iter__') else logs_gen
                 # Wait for the container to exit
-                result = container.wait()
-                exit_code = result.get("StatusCode", 0)
+                exit_code = container.wait()
                 if exit_code != 0:
                     raise PodmanCommandError(
                         f"Container command failed with exit code {exit_code}",
@@ -161,8 +161,7 @@ class PodmanCLI:
                         yield line
                     
                     # Wait for container completion and get exit status
-                    result = container.wait()
-                    exit_code = result.get("StatusCode", 0)
+                    exit_code = container.wait()
                     if exit_code != 0:
                         raise PodmanCommandError(
                             f"Container command failed with exit code {exit_code}",

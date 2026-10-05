@@ -14,10 +14,10 @@ class TestErrorHandling(unittest.TestCase):
     @patch('podman.client.PodmanClient')
     def test_run_container_raises_command_error_on_nonzero_exit(self, mock_podman_client_class):
         """Test that run_container raises PodmanCommandError when container exits with non-zero code."""
-        # Setup mock container
+        # Setup mock container - podman-py 5.x returns int from wait() and generator from logs()
         mock_container = MagicMock()
-        mock_container.logs.return_value = [b"line1\n", b"line2\n"]
-        mock_container.wait.return_value = {"StatusCode": 42}
+        mock_container.logs.return_value = iter([b"line1\n", b"line2\n"])
+        mock_container.wait.return_value = 42
         
         # Setup mock Podman client
         mock_client_instance = MagicMock()
@@ -41,8 +41,8 @@ class TestErrorHandling(unittest.TestCase):
     def test_run_container_no_stream_raises_command_error(self, mock_podman_client_class):
         """Test non-streaming run_container raises PodmanCommandError on non-zero exit."""
         mock_container = MagicMock()
-        mock_container.logs.return_value = b"error output"
-        mock_container.wait.return_value = {"StatusCode": 99}
+        mock_container.logs.return_value = iter([b"error output"])
+        mock_container.wait.return_value = 99
         
         mock_client_instance = MagicMock()
         mock_client_instance.containers.run.return_value = mock_container
