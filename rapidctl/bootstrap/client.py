@@ -89,6 +89,16 @@ class CtlClient:
             self.cli._connect_to_podman()
         return self.cli
 
+    def _connect_docker(self):
+        """
+        Connect to Docker and return the active session.
+        """
+        if self.cli is None:
+            from rapidctl.cli.docker_cli import DockerCLI
+            self.cli = DockerCLI()
+            self.cli._connect_to_docker()
+        return self.cli
+
     def _container_validator(self, container_image):
         """
          Sanitize a container image URL/name to prevent command injection and ensure valid format.
@@ -114,6 +124,10 @@ class CtlClient:
             from rapidctl.execution.podman import PodmanExecutionContext
             cli = self.connect()
             return PodmanExecutionContext(cli, self.container_repo, self.command_path)
+        elif mode == "docker":
+            from rapidctl.execution.docker import DockerExecutionContext
+            cli = self._connect_docker()
+            return DockerExecutionContext(cli, self.container_repo, self.command_path)
         elif mode == "kubernetes":
             from rapidctl.execution.kubernetes import KubernetesExecutionContext
             return KubernetesExecutionContext(self.container_repo, self.command_path)

@@ -16,6 +16,9 @@ dependencies = [
     "pydantic",
 ]
 
+[project.optional-dependencies]
+docker = ["docker>=7.2.0,<8"]
+
 [tool.hatch.version]
 source = "vcs"
 
@@ -25,4 +28,5 @@ Homepage = "https://github.com/dalethestirling/rapidctl"
 [tool.pytest.ini_options]
 markers = [
     "requires_podman: mark test as requiring a running Podman service",
+    "requires_docker: mark test as requiring a running Docker daemon",
 ]

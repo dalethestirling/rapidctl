@@ -1,6 +1,6 @@
 # Rapidctl
 
-**Rapidctl** is a Python framework for creating custom CLI tools that execute commands inside containerized environments using Podman. It allows you to package and distribute CLI utilities where all dependencies and runtime environments are containerized, ensuring consistency across different systems.
+**Rapidctl** is a Python framework for creating custom CLI tools that execute commands inside containerized environments using Podman or Docker. It allows you to package and distribute CLI utilities where all dependencies and runtime environments are containerized, ensuring consistency across different systems.
 
 ## 🎯 Purpose
 
@@ -16,9 +16,9 @@ Rapidctl consists of three main layers:
 ├─────────────────────────────────────┤
 │   Bootstrap Layer (CtlClient)       │  ← Configuration & validation
 ├─────────────────────────────────────┤
-│   CLI Layer (PodmanCLI)             │  ← Container orchestration
+│   CLI Layer (PodmanCLI / DockerCLI) │  ← Container orchestration
 ├─────────────────────────────────────┤
-│   Podman API                         │  ← Container runtime
+│   Podman / Docker API               │  ← Container runtime
 └─────────────────────────────────────┘
 ```
 
@@ -33,10 +33,13 @@ Rapidctl consists of three main layers:
   - Connectors are platform specific
   - Connectors are used by the CLI Layer to interact with the container runtime
   - Connectors are plugins for different ecosystems (Window, OSX, Linux, etc)
+  - **Podman connectors**: `osx`, `linux` (Windows TODO)
+  - **Docker connectors**: `docker_osx`, `docker_linux` (auto-detect socket via `docker.from_env()`)
   
 - **CLI Layer** (`rapidctl.cli`)
   - `PodmanCLI`: Interfaces with Podman API for container operations
-  - Handles image pulling, container management, and command execution
+  - `DockerCLI`: Interfaces with Docker API for container operations (uses `docker.from_env()` with context resolution)
+  - Both handle image pulling, container management, and command execution
   
 - **Actions** (`rapidctl.cli.actions`)
   - Actions are an operation to achieve an outcome 
@@ -51,8 +54,10 @@ Rapidctl consists of three main layers:
 ### Prerequisites
 
 - Python 3.10+
-- Podman installed and running (on macOS, you will be automatically prompted to start the machine if it is stopped)
-- `podman` Python package
+- **Podman** installed and running (on macOS, you will be automatically prompted to start the machine if it is stopped) — **default runtime**
+- **Docker** installed and running (optional alternative runtime) — set `RAPIDCTL_EXEC_MODE=docker`
+- `podman` Python package (for Podman runtime)
+- `docker` Python package (for Docker runtime, install with `pip install rapidctl[docker]`)
 
 ### Installation
 
@@ -299,6 +304,24 @@ else:
     ```
   - Useful for custom Podman installations or when running multiple Podman instances
 
+- **`DOCKER_SOCKET`**: Path to Docker socket (optional)
+  - If not set, rapidctl will use `docker.from_env()` which auto-resolves the active Docker CLI context
+  - Works with Docker Desktop, Colima, OrbStack, and standard Docker Engine out of the box
+  - Override by setting this variable:
+    ```bash
+    export DOCKER_SOCKET="unix:///path/to/your/docker.sock"
+    ```
+
+- **`RAPIDCTL_EXEC_MODE`**: Container runtime to use
+  - `podman` (default) — Use Podman runtime
+  - `docker` — Use Docker runtime
+  - `kubernetes` — Use Kubernetes Job execution (remote)
+  - Example:
+    ```bash
+    export RAPIDCTL_EXEC_MODE=docker
+    ./myctl <command>
+    ```
+
 ## 🔒 Security
 
 Rapidctl includes container image name validation to prevent command injection attacks:
@@ -457,6 +480,7 @@ rapidctl/
 - [x] Add CI/CD pipeline
 - [x] Platform-specific socket detection (macOS complete)
 - [x] Add Linux connector
+- [x] Add Docker runtime support (macOS & Linux)
 - [ ] Add Windows connector
 
 ## 🤝 Contributing
